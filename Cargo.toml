@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "coordinator",
+    "peer",
+]
+resolver = "2"
