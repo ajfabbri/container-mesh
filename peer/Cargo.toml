@@ -1,0 +1,18 @@
+[package]
+name = "contmesh-peer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+common = { path = "../common" }
+clap = { version = "=4.2.0", features = ["derive"] }
+maplit = { version = "1.0.2" }
+serde_cbor = { version = "0.11.1" }
+serde_json = { version = "1.0.66" }
+chrono = { version = "0.4.31" }
+
+
+dittolive-ditto.path = "/Users/fabbri/Code/ditto/rust/dittolive-ditto"
+#dittolive-ditto = { version = "4.4.2" }
