@@ -1,23 +1,48 @@
 use serde_derive::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
 use std::time::Duration;
 
-#[derive(Serialize, Deserialize, Debug)]
+// define constant document id
+pub const DEFAULT_DOC_ID: &str = "default_doc_id";
+
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Peer {
-    peer_id: u64,
-    peer_ip_addr: std::net::IpAddr,
+    pub peer_id: u64,
+    pub peer_ip_addr: std::net::IpAddr,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Heartbeat {
+    pub sender: Peer,
+    pub sent_at_msec: u64,
+}
+
+// Ignore timestamps when storing in a set
+impl PartialEq for Heartbeat {
+    fn eq(&self, other: &Self) -> bool {
+        self.sender == other.sender
+    }
+}
+
+impl Eq for Heartbeat {}
+
+impl Hash for Heartbeat {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.sender.hash(state);
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ExecutionPlan {
-    start_time: u64,
-    test_duration_sec: u32,
-    report_collection_name: String,
-    peer_collection_name: String,
-    heartbeat_collection_name: String,
-    heartbeat_interval_sec: u32,
-    min_msg_delay_msec: u32,
-    max_msg_delay_msec: u32,
-    peers: Vec<Peer>,
+    pub start_time: u64,
+    pub test_duration_sec: u32,
+    pub report_collection_name: String,
+    pub peer_collection_name: String,
+    pub heartbeat_collection_name: String,
+    pub heartbeat_interval_sec: u32,
+    pub min_msg_delay_msec: u32,
+    pub max_msg_delay_msec: u32,
+    pub peers: Vec<Peer>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

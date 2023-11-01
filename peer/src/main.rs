@@ -9,6 +9,8 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::thread;
 use std::time;
+use common::types::*;
+use common::util::*;
 
 
 #[derive(Parser, Debug)]
@@ -46,8 +48,7 @@ fn make_ditto() -> Result<Ditto, DittoError> {
     Ok(ditto)
 }
 
-#[allow(dead_code)]
-fn config_transport(ditto: &mut Ditto, cli: &Cli) -> Result<(), Box<dyn Error>> {
+fn init_transport(ditto: &mut Ditto, cli: &Cli) -> Result<(), Box<dyn Error>> {
     let mut config = TransportConfig::new();
     config.enable_all_peer_to_peer();
     let _ip_addr: std::net::IpAddr = cli.coordinator_hostname.parse()?;
@@ -65,13 +66,22 @@ fn print_cdoc(cbor: &serde_cbor::Value) -> Result<(), io::Error> {
 
 #[derive(Clone)]
 struct HeartbeatCtx {
+    record: Heartbeat,
     finished: Arc<AtomicBool>,
+}
+
+struct PeerContext {
+    id: u64,
+    ditto: Ditto,
+    plan: Option<ExecutionPlan>,
+    start_time_msec: u64,
 }
 
 // implement new
 impl HeartbeatCtx {
-    fn new() -> Self {
+    fn new(hb: Heartbeat) -> Self {
         HeartbeatCtx {
+            record: hb,
             finished: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -105,27 +115,65 @@ fn heartbeat_loop(hctx: HeartbeatCtx) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn bootstrap_peer(cli: &Cli) -> Result<(), Box<dyn Error>> {
+fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<ExecutionPlan, Box<dyn Error>> {
     // subscribe to coordinator collection
     println!("Subscribing to coordinator collection {}..", cli.coordinator_collection);
-    let ditto = make_ditto().expect("make_ditto");
-    let store = ditto.store();
-    let _collection = store
+    pctx.ditto = make_ditto().expect("make_ditto");
+    init_transport(&mut pctx.ditto, &cli)?;
+    let store = pctx.ditto.store();
+    let collection = store
         .collection(&cli.coordinator_collection)
         .expect("collection create");
-    ditto.start_sync().expect("start_sync");
+    pctx.ditto.start_sync().expect("start_sync");
+
+    let hb_record = Heartbeat {
+        // use random number for peer_id
+        sender: Peer {
+            peer_id: pctx.id,
+            // XXX configurable bind addr
+            peer_ip_addr: std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+        },
+        sent_at_msec: 0,
+    };
 
     // start heartbeat timer
-    let hctx = HeartbeatCtx::new();
+    let hctx = HeartbeatCtx::new(hb_record);
     heartbeat_start(hctx.clone())?;
+
     // wait for execution plan
+    loop {
+        // XXX subscribe w/ callback instead of polling
+        let did = DocumentId::new(&String::from(DEFAULT_DOC_ID))?;
+        let doc_result = collection.find_by_id(did)
+            .exec();
+        if let Err(e) = doc_result {
+            println!("Error: {:?}", e);
+            continue;
+        }
+       if let Ok(plan) = doc_result {
+           let foo = plan.typed::<ExecutionPlan>()?;
+           pctx.plan = Some(foo);
+           break;
+       }
+       std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+
+    println!("Got execution plan {:?}", pctx.plan);
+
+    // TODO pass in and stop at end of execution
     heartbeat_stop(&hctx);
-    Ok(())
+    todo!()
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
+    let mut pctx = PeerContext {
+        id: rand::random::<u64>(),
+        ditto: make_ditto()?,
+        plan: None,
+        start_time_msec: system_time_msec(),
+    };
     println!("Args {:?}", cli);
-    bootstrap_peer(&cli)?;
+    bootstrap_peer(&mut pctx, &cli)?;
     Ok(())
 }
