@@ -1,0 +1,16 @@
+# Use a small base image so we can scale to many containers.
+FROM alpine:3.18
+
+# Add traffic control (tc)
+RUN apk add --no-cache iproute2
+
+ARG bind-addr=0.0.0.0
+ARG bind-port=4001
+
+# copy rust binaries from target/
+COPY target/release/cmesh-peer .
+
+RUN ./cmesh-peer
+
+
+
