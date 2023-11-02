@@ -24,6 +24,12 @@ struct Cli {
 
     #[arg(short, long, default_value_t = 60)]
     test_duration_sec: u32,
+
+    #[arg(short, long, default_value = "0.0.0.0")]
+    bind_address: String,
+
+    #[arg(short, long, default_value_t = 4001)]
+    bind_port: u32,
 }
 
 struct CoordinatorContext {
@@ -62,14 +68,16 @@ fn make_ditto() -> Result<Ditto, DittoError> {
     Ok(ditto)
 }
 
-fn init_transport(ctx: &mut CoordinatorContext) {
+fn init_transport(ctx: &mut CoordinatorContext, cli: &Cli) -> Result<(), Box<dyn Error>> {
     let mut config = TransportConfig::new();
     config.enable_all_peer_to_peer();
     config.connect.tcp_servers = HashSet::new();
     config.connect.websocket_urls = HashSet::new();
     config.listen.tcp.enabled = true;
-    config.listen.tcp.interface_ip = "0.0.0.0".to_string();
+    config.listen.tcp.interface_ip = cli.bind_address.clone();
+    config.listen.tcp.port = cli.bind_port.try_into()?;
     ctx.ditto.set_transport_config(config);
+    Ok(())
 }
 
 // XXX TODO just use a tuple?
@@ -135,7 +143,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         coord_collection: None,
         peers: Arc::new(Mutex::new(HashSet::new())),
     };
-    init_transport(&mut ctx);
+    init_transport(&mut ctx, &cli);
 
     wait_for_quorum(&mut ctx, &cli.coordinator_collection, cli.min_peers)?;
     Ok(())
