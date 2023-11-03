@@ -19,10 +19,13 @@ struct Cli {
     coordinator_collection: String,
 
     #[arg(short, long)]
-    coordinator_hostname: String,
+    coordinator_addr: String,
+
+    #[arg(short, long, default_value_t = 4001)]
+    coordinator_port: u32,
 
     #[arg(short, long, default_value = "0.0.0.0")]
-    bind_address: String,
+    bind_addr: String,
 
     #[arg(short, long, default_value_t = 4001)]
     bind_port: u32,
@@ -58,9 +61,9 @@ fn make_ditto() -> Result<Ditto, DittoError> {
 fn init_transport(ditto: &mut Ditto, cli: &Cli) -> Result<(), Box<dyn Error>> {
     let mut config = TransportConfig::new();
     config.enable_all_peer_to_peer();
-    let _ip_addr: std::net::IpAddr = cli.coordinator_hostname.parse()?;
-    config.connect.tcp_servers = HashSet::from([cli.coordinator_hostname.clone()]);
-    config.listen.tcp.interface_ip = cli.bind_address.clone();
+    let _ip_addr: std::net::IpAddr = cli.coordinator_addr.parse()?;
+    config.connect.tcp_servers = HashSet::from([cli.coordinator_addr.clone()]);
+    config.listen.tcp.interface_ip = cli.bind_addr.clone();
     config.listen.tcp.port = cli.bind_port.try_into()?;
     ditto.set_transport_config(config);
     Ok(())

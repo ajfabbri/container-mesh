@@ -26,7 +26,7 @@ struct Cli {
     test_duration_sec: u32,
 
     #[arg(short, long, default_value = "0.0.0.0")]
-    bind_address: String,
+    bind_addr: String,
 
     #[arg(short, long, default_value_t = 4001)]
     bind_port: u32,
@@ -74,7 +74,7 @@ fn init_transport(ctx: &mut CoordinatorContext, cli: &Cli) -> Result<(), Box<dyn
     config.connect.tcp_servers = HashSet::new();
     config.connect.websocket_urls = HashSet::new();
     config.listen.tcp.enabled = true;
-    config.listen.tcp.interface_ip = cli.bind_address.clone();
+    config.listen.tcp.interface_ip = cli.bind_addr.clone();
     config.listen.tcp.port = cli.bind_port.try_into()?;
     ctx.ditto.set_transport_config(config);
     Ok(())
