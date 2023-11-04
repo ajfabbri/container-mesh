@@ -11,7 +11,20 @@ Idea is to run a bunch of containers with a peer-to-peer (p2p) ditto.live SDK
 [pumba](https://github.com/alexei-led/pumba)?) to simulate a degraded network,
 high mobility, and other failure conditions.
 
-## To Run in Your Environment
+### Build / Run
+
+*Debug*
+`cargo build --target $DITTO_TARGET`
+`docker compose build --build-arg "FLAVOR=debug"`
+`docker compose up`
+
+*Release*
+`cargo build --target $DITTO_TARGET --release`
+`docker compose build --build-arg"`
+`docker compose up`
+
+
+### To Run in Your Environment
 
 You'll need to create a file .secret.env that contains:
 
@@ -28,7 +41,7 @@ Search / replace things like:
 - libdittoffi.so (i.e. to .dylib)
 - "/lib" for target library paths, i.e. in docker/run*.sh
 
-# WIP Design & Notes
+# Design & Notes (WIP)
 
 ### Metrics
 
