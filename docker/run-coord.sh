@@ -2,6 +2,7 @@
 set -euo pipefail
 
 echo "Running docker/run-coord.sh from $(pwd)"
+echo "FLAVOR=$FLAVOR, ARCH=$ARCH"
 echo "Current directory contents:\
 $(ls -l)"
 
@@ -13,12 +14,16 @@ for var in DITTO_APP_ID DITTO_PG_TOKEN; do
 done
 
 echo "Copying libdittoffi.so to /lib"
-find $COORD_ARCH/release -name libdittoffi.so \
+find $ARCH/$FLAVOR -name libdittoffi.so \
     -exec cp {} /lib \;
+
+if [ "$FLAVOR" = "debug" ]; then
+    export RUST_BACKTRACE=1
+fi
 
 set -x
 uname -a
-CBIN="./$COORD_ARCH/release/cmesh-coordinator"
+CBIN="./$ARCH/$FLAVOR/cmesh-coordinator"
 file $CBIN
 $CBIN $@
 set +x

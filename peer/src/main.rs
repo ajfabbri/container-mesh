@@ -18,39 +18,40 @@ struct Cli {
     #[arg(short, long, default_value = "container-mesh-coord")]
     coord_collection: String,
 
-    #[arg(short, long)]
+    #[arg(long)]
     coord_addr: String,
 
-    #[arg(short, long, default_value_t = 4001)]
+    #[arg(long, default_value_t = 4001)]
     coord_port: u32,
 
     #[arg(short, long, default_value = "0.0.0.0")]
     bind_addr: String,
 
-    #[arg(short, long, default_value_t = 4001)]
+    #[arg(short='p', long, default_value_t = 4001)]
     bind_port: u32,
 }
 
 fn make_ditto() -> Result<Ditto, DittoError> {
     let make_id = |ditto_root| {
         let app_id = AppId::from_env("DITTO_APP_ID")?;
-        let shared_token = std::env::var("DITTO_PG_TOKEN").unwrap();
-        let cloud_sync = true;
-        let custom_auth_url = None;
-        identity::OnlinePlayground::new(
-            ditto_root,
-            app_id,
-            shared_token,
-            cloud_sync,
-            custom_auth_url,
-        )
+        identity::OfflinePlayground::new(ditto_root, app_id)
+        //let shared_token = std::env::var("DITTO_PG_TOKEN").unwrap();
+        //let cloud_sync = true;
+        //let custom_auth_url = None;
+        //identity::OnlinePlayground::new(
+        //    ditto_root,
+        //    app_id,
+        //    shared_token,
+        //    cloud_sync,
+        //    custom_auth_url,
     };
 
     // Connect to ditto
     let ditto = Ditto::builder()
-        .with_root(Arc::new(
-            PersistentRoot::from_current_exe().expect("Invalid Ditto Root"),
-        ))
+        .with_temp_dir()
+        // .with_root(Arc::new(
+        //     PersistentRoot::from_current_exe().expect("Invalid Ditto Root"),
+        // ))
         .with_minimum_log_level(LogLevel::Info)
         .with_identity(make_id)?
         .build()
@@ -136,6 +137,7 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<ExecutionP
     let collection = store
         .collection(&cli.coord_collection)
         .expect("collection create");
+    pctx.ditto.set_license_from_env("DITTO_LICENSE");
     pctx.ditto.start_sync().expect("start_sync");
 
     let hb_record = Heartbeat {
