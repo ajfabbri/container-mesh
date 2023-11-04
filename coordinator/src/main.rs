@@ -42,6 +42,7 @@ struct CoordinatorContext {
 }
 
 fn make_ditto() -> Result<Ditto, DittoError> {
+    println!("XXX -> make_ditto");
     let make_id = |ditto_root| {
         let app_id = AppId::from_env("DITTO_APP_ID")?;
         let shared_token = std::env::var("DITTO_PG_TOKEN").unwrap();
@@ -56,6 +57,7 @@ fn make_ditto() -> Result<Ditto, DittoError> {
         )
     };
 
+    println!("XXX -> make_ditto -> builder");
     // Connect to ditto
     let ditto = Ditto::builder()
         .with_root(Arc::new(
@@ -76,6 +78,7 @@ fn init_transport(ctx: &mut CoordinatorContext, cli: &Cli) -> Result<(), Box<dyn
     config.listen.tcp.enabled = true;
     config.listen.tcp.interface_ip = cli.bind_addr.clone();
     config.listen.tcp.port = cli.bind_port.try_into()?;
+    println!("XXX -> set transport config");
     ctx.ditto.set_transport_config(config);
     Ok(())
 }
@@ -143,8 +146,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         coord_collection: None,
         peers: Arc::new(Mutex::new(HashSet::new())),
     };
+    println!("XXX -> init transport");
     init_transport(&mut ctx, &cli);
 
+    println!("XXX -> wait for quorum");
     wait_for_quorum(&mut ctx, &cli.coordinator_collection, cli.min_peers)?;
     Ok(())
 }
