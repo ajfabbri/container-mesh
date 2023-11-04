@@ -16,13 +16,13 @@ use common::util::*;
 #[derive(Parser, Debug)]
 struct Cli {
     #[arg(short, long, default_value = "container-mesh-coord")]
-    coordinator_collection: String,
+    coord_collection: String,
 
     #[arg(short, long)]
-    coordinator_addr: String,
+    coord_addr: String,
 
     #[arg(short, long, default_value_t = 4001)]
-    coordinator_port: u32,
+    coord_port: u32,
 
     #[arg(short, long, default_value = "0.0.0.0")]
     bind_addr: String,
@@ -61,8 +61,8 @@ fn make_ditto() -> Result<Ditto, DittoError> {
 fn init_transport(ditto: &mut Ditto, cli: &Cli) -> Result<(), Box<dyn Error>> {
     let mut config = TransportConfig::new();
     config.enable_all_peer_to_peer();
-    let _ip_addr: std::net::IpAddr = cli.coordinator_addr.parse()?;
-    config.connect.tcp_servers = HashSet::from([cli.coordinator_addr.clone()]);
+    let _ip_addr: std::net::IpAddr = cli.coord_addr.parse()?;
+    config.connect.tcp_servers = HashSet::from([cli.coord_addr.clone()]);
     config.listen.tcp.interface_ip = cli.bind_addr.clone();
     config.listen.tcp.port = cli.bind_port.try_into()?;
     ditto.set_transport_config(config);
@@ -129,12 +129,12 @@ fn heartbeat_loop(hctx: HeartbeatCtx) -> Result<(), std::io::Error> {
 
 fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<ExecutionPlan, Box<dyn Error>> {
     // subscribe to coordinator collection
-    println!("Subscribing to coordinator collection {}..", cli.coordinator_collection);
+    println!("Subscribing to coordinator collection {}..", cli.coord_collection);
     pctx.ditto = make_ditto().expect("make_ditto");
     init_transport(&mut pctx.ditto, &cli)?;
     let store = pctx.ditto.store();
     let collection = store
-        .collection(&cli.coordinator_collection)
+        .collection(&cli.coord_collection)
         .expect("collection create");
     pctx.ditto.start_sync().expect("start_sync");
 
