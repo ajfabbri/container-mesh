@@ -1,3 +1,4 @@
 .secret.env
 Cargo.lock
+/target*
 
