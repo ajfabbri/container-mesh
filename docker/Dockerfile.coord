@@ -1,14 +1,29 @@
 # Use a small base image so we can scale to many containers.
-FROM alpine:3.18
+#FROM alpine:3.18 <- need to figure out musl build to get this working
+FROM ubuntu:22.04
 
-ARG bind-addr=0.0.0.0
-ARG bind-port=4001
-ARG min-peers=1
+ARG BIND_ADDR=0.0.0.0
+ARG BIND_PORT=4002
+ARG DITTO_APP_ID
+ARG DITTO_PG_TOKEN
+ARG MIN_PEERS=2
+ARG COORD_ARCH=x86_64-unknown-linux-gnu
 
-# Add traffic control (tc)
-RUN apk add --no-cache iproute2
+ENV BIND_ADDR=${BIND_ADDR}
+ENV BIND_PORT=${BIND_PORT}
+ENV DITTO_APP_ID=${DITTO_APP_ID}
+ENV DITTO_PG_TOKEN=${DITTO_PG_TOKEN}
+ENV MIN_PEERS=${MIN_PEERS}
+ENV COORD_ARCH=${COORD_ARCH}
 
+# install traffic control (tc) etc.
+RUN apt update && apt install iproute2 bash file findutils -y
+#RUN apk add --no-cache iproute2 bash dos2unix file
+
+WORKDIR /root
 # copy rust binaries from target/
-COPY target/release/cmesh-coordinator .
+COPY ./target .
+COPY ./docker/run-coord.sh .
 
-RUN
+CMD ["bash", "-c", \
+"./run-coord.sh --bind-addr ${BIND_ADDR}  --bind-port $BIND_PORT --min-peers $MIN_PEERS"]

@@ -6,12 +6,17 @@ services:
             context: .
             dockerfile: ./docker/Dockerfile.coord
             args:
-                bind-addr: 10.1.0.2
-                bind-port: 4001
+                BIND_ADDR: 10.1.0.2
+                BIND_PORT: 4001
+                DITTO_APP_ID: "${DITTO_APP_ID}"
+                DITTO_PG_TOKEN: "${DITTO_PG_TOKEN}"
+
         ports:
             - "4000-4099:4000-4099"
+        networks:
+            - mesh
 
-    # XXX copy-pasta for testing, should probably just script it.
+    # XXX copy-pasta peers for testing, should probably just script it.
     peer1:
         build:
             context: .
@@ -20,10 +25,14 @@ services:
                 BIND_ADDR: 0.0.0.0
                 BIND_PORT: 4001
                 COORD_ADDR: 10.1.0.2
+                COORD_PORT: 4001
+                DITTO_APP_ID: "${DITTO_APP_ID}"
+                DITTO_PG_TOKEN: "${DITTO_PG_TOKEN}"
         ports:
             - "4000-4099:4000-4099"
         networks:
             - mesh
+
 networks:
     mesh:
         driver: bridge
