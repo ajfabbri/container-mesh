@@ -13,22 +13,22 @@ struct Cli {
     #[arg(short, long, default_value = "container-mesh-coord")]
     coordinator_collection: String,
 
-    #[arg(short, long, default_value_t = 1)]
+    #[arg(long, default_value_t = 1)]
     min_peers: u32,
 
-    #[arg(short, long, default_value_t = 10)]
+    #[arg(long, default_value_t = 10)]
     min_msg_delay_msec: u32,
 
-    #[arg(short, long, default_value_t = 500)]
+    #[arg(long, default_value_t = 500)]
     max_msg_delay_msec: u32,
 
-    #[arg(short, long, default_value_t = 60)]
+    #[arg(short='d', long, default_value_t = 60)]
     test_duration_sec: u32,
 
     #[arg(short, long, default_value = "0.0.0.0")]
     bind_addr: String,
 
-    #[arg(short, long, default_value_t = 4001)]
+    #[arg(short='p', long, default_value_t = 4001)]
     bind_port: u32,
 }
 

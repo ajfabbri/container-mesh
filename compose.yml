@@ -6,10 +6,12 @@ services:
             context: .
             dockerfile: ./docker/Dockerfile.coord
             args:
+                FLAVOR: "${FLAVOR}"
                 BIND_ADDR: 10.1.0.2
                 BIND_PORT: 4001
                 DITTO_APP_ID: "${DITTO_APP_ID}"
                 DITTO_PG_TOKEN: "${DITTO_PG_TOKEN}"
+                DITTO_LICENSE: "${DITTO_LICENSE}"
 
         ports:
             - "4000-4099:4000-4099"
@@ -22,12 +24,14 @@ services:
             context: .
             dockerfile: ./docker/Dockerfile.peer
             args:
+                FLAVOR: "${FLAVOR}"
                 BIND_ADDR: 0.0.0.0
                 BIND_PORT: 4001
                 COORD_ADDR: 10.1.0.2
                 COORD_PORT: 4001
                 DITTO_APP_ID: "${DITTO_APP_ID}"
                 DITTO_PG_TOKEN: "${DITTO_PG_TOKEN}"
+                DITTO_LICENSE: "${DITTO_LICENSE}"
         ports:
             - "4000-4099:4000-4099"
         networks:

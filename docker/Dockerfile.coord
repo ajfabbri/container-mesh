@@ -2,19 +2,23 @@
 #FROM alpine:3.18 <- need to figure out musl build to get this working
 FROM ubuntu:22.04
 
+ARG FLAVOR=
+ARG ARCH=x86_64-unknown-linux-gnu
+ARG DITTO_LICENSE=
 ARG BIND_ADDR=0.0.0.0
 ARG BIND_PORT=4002
 ARG DITTO_APP_ID
 ARG DITTO_PG_TOKEN
 ARG MIN_PEERS=2
-ARG COORD_ARCH=x86_64-unknown-linux-gnu
 
+ENV FLAVOR=${FLAVOR}
+ENV ARCH=${ARCH}
+ENV DITTO_LICENSE=${DITTO_LICENSE}
 ENV BIND_ADDR=${BIND_ADDR}
 ENV BIND_PORT=${BIND_PORT}
 ENV DITTO_APP_ID=${DITTO_APP_ID}
 ENV DITTO_PG_TOKEN=${DITTO_PG_TOKEN}
 ENV MIN_PEERS=${MIN_PEERS}
-ENV COORD_ARCH=${COORD_ARCH}
 
 # install traffic control (tc) etc.
 RUN apt update && apt install iproute2 bash file findutils -y
@@ -22,7 +26,7 @@ RUN apt update && apt install iproute2 bash file findutils -y
 
 WORKDIR /root
 # copy rust binaries from target/
-COPY ./target .
+COPY ./target/${ARCH} ./${ARCH}
 COPY ./docker/run-coord.sh .
 
 CMD ["bash", "-c", \
