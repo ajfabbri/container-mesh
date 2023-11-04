@@ -7,7 +7,7 @@ high-mobility environments.
 
 ## The App
 Idea is to run a bunch of containers with a peer-to-peer (p2p) ditto.live SDK
-"app" which measures p2p, and use Linux Traffic Control (tc) (via 
+"app" which measures system metrics, and then use Linux Traffic Control (tc) (via 
 [pumba](https://github.com/alexei-led/pumba)?) to simulate a degraded network,
 high mobility, and other failure conditions.
 
