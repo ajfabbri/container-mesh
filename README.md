@@ -57,3 +57,19 @@ Some TODOs:
     - Peer-to-peer bootstrapping
         - Push list of ip addresses to nodes before start?
 
+## Development Notes
+
+You'll need to create a file .secret.env that contains
+
+export DITTO_APP_ID="your online playground app id"
+export DITTO_PG_TOKEN="your playground token"
+
+I'm developing on Ubuntu 22.04 for target x86_64-unknown-linux-gnu
+at the moment. To build this in your environment you'll need to modify .envrc.
+
+If you want to build on / for another platform you'll need to:
+Search / replace things like:
+- x86_64
+- libdittoffi.so (i.e. to .dylib)
+- "/lib" for target library paths, i.e. in docker/run*.sh
+
