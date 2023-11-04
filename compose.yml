@@ -1,0 +1,34 @@
+version: '2'
+
+services:
+    coordinator:
+        build:
+            context: .
+            dockerfile: ./docker/Dockerfile.coord
+            args:
+                bind-addr: 10.1.0.2
+                bind-port: 4001
+        ports:
+            - "4000-4099:4000-4099"
+
+    # XXX copy-pasta for testing, should probably just script it.
+    peer1:
+        build:
+            context: .
+            dockerfile: ./docker/Dockerfile.peer
+            args:
+                BIND_ADDR: 0.0.0.0
+                BIND_PORT: 4001
+                COORD_ADDR: 10.1.0.2
+        ports:
+            - "4000-4099:4000-4099"
+        networks:
+            - mesh
+networks:
+    mesh:
+        driver: bridge
+        ipam:
+            config:
+                - subnet: 10.1.0.0/16
+                  gateway: 10.1.0.1
+
