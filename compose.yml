@@ -6,7 +6,7 @@ services:
             context: .
             dockerfile: ./docker/Dockerfile.coord
             args:
-                FLAVOR: "${FLAVOR}"
+                FLAVOR:
                 BIND_ADDR: 10.1.0.2
                 BIND_PORT: 4001
                 DITTO_APP_ID: "${DITTO_APP_ID}"
@@ -24,7 +24,7 @@ services:
             context: .
             dockerfile: ./docker/Dockerfile.peer
             args:
-                FLAVOR: "${FLAVOR}"
+                FLAVOR:
                 BIND_ADDR: 0.0.0.0
                 BIND_PORT: 4001
                 COORD_ADDR: 10.1.0.2
