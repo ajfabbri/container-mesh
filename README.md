@@ -94,5 +94,7 @@ Some TODOs:
       - Timestamp, node_id
       - Later/nice to have: network utilization / node stats
     - Peer-to-peer bootstrapping
-        - Push list of ip addresses to nodes before start?
+        - Use well-known IP and "coordinator collection" to connect to
+          coordinator and get CoordinatorInfo (heartbeat details + optional
+          exec. plan)
 
