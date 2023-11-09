@@ -13,6 +13,8 @@ high mobility, and other failure conditions.
 
 ### Build / Run
 
+Tested with `DITTO_TARGET=x86_64-unknown-linux-gnu`
+
 *Debug*
 `cargo build --target $DITTO_TARGET`
 `docker compose build --build-arg "FLAVOR=debug"`
@@ -27,6 +29,12 @@ high mobility, and other failure conditions.
 ### To Run in Your Environment
 
 You'll need to create a file .secret.env that contains:
+
+For OfflinePlayground auth (current code):
+
+export DITTO_LICENSE="your ditto license string"
+
+For OnlinePlayround auth:
 
 export DITTO_APP_ID="your online playground app id"
 export DITTO_PG_TOKEN="your playground token"
