@@ -16,7 +16,9 @@ services:
         ports:
             - "4000-4099:4000-4099"
         networks:
-            - mesh
+            mesh:
+                ipv4_address: 10.1.0.2
+
 
     # XXX copy-pasta peers for testing, should probably just script it.
     peer1:
@@ -26,14 +28,14 @@ services:
             args:
                 FLAVOR:
                 BIND_ADDR: 0.0.0.0
-                BIND_PORT: 4001
+                BIND_PORT: 4101
                 COORD_ADDR: 10.1.0.2
                 COORD_PORT: 4001
                 DITTO_APP_ID: "${DITTO_APP_ID}"
                 DITTO_PG_TOKEN: "${DITTO_PG_TOKEN}"
                 DITTO_LICENSE: "${DITTO_LICENSE}"
         ports:
-            - "4000-4099:4000-4099"
+            - "4100-4199:4100-4199"
         networks:
             - mesh
 
