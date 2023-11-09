@@ -86,7 +86,7 @@ struct HeartbeatCtx {
 struct PeerContext {
     id: u64,
     ditto: Ditto,
-    plan: Option<ExecutionPlan>,
+    coord_info: Option<CoordinatorInfo>,
     start_time_msec: u64,
 }
 
@@ -137,15 +137,30 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<ExecutionP
     let collection = store
         .collection(&cli.coord_collection)
         .expect("collection create");
-    pctx.ditto.set_license_from_env("DITTO_LICENSE");
+    pctx.ditto.set_license_from_env("DITTO_LICENSE")?;
     pctx.ditto.start_sync().expect("start_sync");
 
+    // wait until we get an initial CoordinatorInfo
+    let init_info;
+    loop {
+        println!("Polling for CoordinatorInfo on {:?}...", collection.name());
+        match collection.find_all().limit(1).exec() {
+            Err(e) => println!("Error: {:?}", e),
+            Ok(plan) => {
+                if plan.len() > 0 {
+                    init_info = Some(plan[0].typed::<CoordinatorInfo>()?);
+                    println!("Got CoordinatorInfo {:?}", init_info.as_ref().unwrap());
+                    break;
+                }
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+    pctx.coord_info = init_info;
     let hb_record = Heartbeat {
-        // use random number for peer_id
         sender: Peer {
             peer_id: pctx.id,
-            // XXX configurable bind addr
-            peer_ip_addr: std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
+            peer_ip_addr: std::net::IpAddr::V4(cli.bind_addr.parse()?),
         },
         sent_at_msec: 0,
     };
@@ -165,14 +180,14 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<ExecutionP
             continue;
         }
        if let Ok(plan) = doc_result {
-           let foo = plan.typed::<ExecutionPlan>()?;
-           pctx.plan = Some(foo);
+           let foo = plan.typed::<CoordinatorInfo>()?;
+           pctx.coord_info = Some(foo);
            break;
        }
        std::thread::sleep(std::time::Duration::from_secs(1));
     }
 
-    println!("Got execution plan {:?}", pctx.plan);
+    println!("Got execution plan {:?}", pctx.coord_info);
 
     // TODO pass in and stop at end of execution
     heartbeat_stop(&hctx);
@@ -184,7 +199,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut pctx = PeerContext {
         id: rand::random::<u64>(),
         ditto: make_ditto()?,
-        plan: None,
+        coord_info: None,
         start_time_msec: system_time_msec(),
     };
     println!("Args {:?}", cli);

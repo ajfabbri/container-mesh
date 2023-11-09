@@ -2,6 +2,8 @@ use serde_derive::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::time::Duration;
 
+pub use crate::default;
+
 // define constant document id
 pub const DEFAULT_DOC_ID: &str = "default_doc_id";
 
@@ -33,13 +35,19 @@ impl Hash for Heartbeat {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct CoordinatorInfo {
+    pub heartbeat_collection_name: String,
+    pub heartbeat_interval_sec: u32,
+    pub execution_plan: Option<ExecutionPlan>,
+}
+
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ExecutionPlan {
     pub start_time: u64,
     pub test_duration_sec: u32,
     pub report_collection_name: String,
     pub peer_collection_name: String,
-    pub heartbeat_collection_name: String,
-    pub heartbeat_interval_sec: u32,
     pub min_msg_delay_msec: u32,
     pub max_msg_delay_msec: u32,
     pub peers: Vec<Peer>,
