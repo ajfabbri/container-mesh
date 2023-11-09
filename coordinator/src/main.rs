@@ -1,12 +1,12 @@
 use clap::Parser;
+use common::types::*;
 use dittolive_ditto::error::DittoError;
 use dittolive_ditto::prelude::*;
 use std::collections::HashSet;
 use std::error::Error;
-use std::sync::{Arc, Mutex, Condvar};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::Duration;
-use common::types::*;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -22,13 +22,13 @@ struct Cli {
     #[arg(long, default_value_t = 500)]
     max_msg_delay_msec: u32,
 
-    #[arg(short='d', long, default_value_t = 60)]
+    #[arg(short = 'd', long, default_value_t = 60)]
     test_duration_sec: u32,
 
     #[arg(short, long, default_value = "0.0.0.0")]
     bind_addr: String,
 
-    #[arg(short='p', long, default_value_t = 4001)]
+    #[arg(short = 'p', long, default_value_t = 4001)]
     bind_port: u32,
 }
 
@@ -97,14 +97,35 @@ impl HeartbeatProcessor {
     }
 }
 
-fn wait_for_quorum(ctx: &mut CoordinatorContext, coord_collection: &str, min_peers: u32) ->
-Result<(), DittoError> {
+fn update_coord_info(
+    cc: &Collection,
+    plan: Option<ExecutionPlan>,
+) -> Result<(), DittoError> {
+    println!("XXX -> update_coord_info for {:?}", cc.name());
+    // Upsert is ok since this is infrequently updated
+    let mut ci = CoordinatorInfo::default();
+    ci.execution_plan = plan;
+    // Return the error but ignore the value
+    _ = cc.upsert(ci)?;
+    Ok(())
+}
+
+fn wait_for_quorum(
+    ctx: &mut CoordinatorContext,
+    coord_collection: &str,
+    min_peers: u32,
+) -> Result<(), DittoError> {
     let store = ctx.ditto.store();
+    // Populate coord. collection with initial info.
     ctx.coord_collection = Some(store.collection(coord_collection)?);
+    // TODO assert collection is empty
+    update_coord_info(ctx.coord_collection.as_ref().unwrap(), None)?;
     ctx.ditto.start_sync()?;
 
+    // Set up heartbeat consumer
+    println!("XXX -> set up heartbeat consumer");
     let coll = ctx.coord_collection.as_ref().unwrap();
-    let hbp = Arc::new( HeartbeatProcessor {
+    let hbp = Arc::new(HeartbeatProcessor {
         peer_set: Arc::clone(&ctx.peers),
         added: Condvar::new(),
     });
@@ -113,17 +134,24 @@ Result<(), DittoError> {
         .find_all()
         .observe_local(move |docs: Vec<BoxedDocument>, event| {
             docs.iter().for_each(|doc| {
-                let val = doc.typed::<Heartbeat>().unwrap();
-                cb.process_heartbeat(val);
+                let r = doc.typed::<Heartbeat>();
+                match r {
+                    Ok(hb) => cb.process_heartbeat(hb),
+                    Err(e) => println!("Heartbeat deser Error {:?}", e),
+                }
             });
             println!("Got event {:?}", event);
-        }).unwrap();
+        })
+        .unwrap();
 
     loop {
         let peers = hbp.peer_set.lock().unwrap();
         let n: u32 = peers.len().try_into().unwrap();
-        if n >=  min_peers {
-            println!("Have {} peers, waiting 5 seconds then attempting to start...", n);
+        if n >= min_peers {
+            println!(
+                "Have {} peers, waiting 5 seconds then attempting to start...",
+                n
+            );
             drop(peers);
             thread::sleep(Duration::from_secs(5));
             break;
