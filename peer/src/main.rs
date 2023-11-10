@@ -193,8 +193,8 @@ fn bootstrap_peer<'a>(
                     pctx.coord_doc_id = Some(plan[0].id());
                     init_info = Some(plan[0].typed::<CoordinatorInfo>()?);
                     println!(
-                        "Got CoordinatorInfo id {:?}: {:?}",
-                        pctx.coord_doc_id,
+                        "--> got CoordinatorInfo id {}: {:?}",
+                        pctx.coord_doc_id.as_ref().unwrap(),
                         init_info.as_ref().unwrap()
                     );
                     break;
@@ -214,20 +214,28 @@ fn bootstrap_peer<'a>(
 
     // Fetch heartbeat doc and start heartbeat timer
     let hbc = store.collection(&pctx.coord_info.as_ref().unwrap().heartbeat_collection_name)?;
-    let r = hbc
-        .find_all()
-        .exec()
-        .expect("Expected to find heartbeat doc");
-    if r.len() < 1 {
-        return Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "No heartbeat doc found",
-        )));
+    let _hb_sub = hbc.find_all().subscribe();
+    // retry until we get a heartbeat doc
+    let hb_doc;
+    loop {
+        let r = hbc
+            .find_all()
+            .exec()
+            .expect("Expected to find heartbeat doc");
+        if r.len() < 1 {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        } else {
+            if r.len() > 1 {
+                println!("Warning: multiple heartbeat docs, using first.");
+            }
+            hb_doc = r[0].typed::<HeartbeatsDoc>()?;
+            break;
+        }
     }
-    if r.len() > 1 {
-        println!("Warning: duplicate heartbeat docs found, using first.");
-    }
-    let hb_doc = r[0].typed::<HeartbeatsDoc>()?;
+    //    return Err(Box::new(std::io::Error::new(
+    //        std::io::ErrorKind::NotFound,
+    //        "No heartbeat doc found",
+    //    )));
     let hctx = HeartbeatCtx::new(pctx.id, hb_record, hb_doc, hbc);
     heartbeat_start(hctx.clone())?;
 
