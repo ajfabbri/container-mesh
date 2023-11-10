@@ -12,7 +12,7 @@ use std::time::Duration;
 #[derive(Parser, Debug)]
 struct Cli {
     #[arg(short, long, default_value = "container-mesh-coord")]
-    coordinator_collection: String,
+    coord_collection: String,
 
     #[arg(long, default_value_t = 1)]
     min_peers: u32,
@@ -220,6 +220,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     ctx.ditto.set_license_from_env("DITTO_LICENSE")?; ctx.ditto.start_sync()?;
 
     println!("XXX -> wait for quorum");
-    wait_for_quorum(&mut ctx, &cli.coordinator_collection, cli.min_peers)?;
+    wait_for_quorum(&mut ctx, &cli.coord_collection, cli.min_peers)?;
     Ok(())
 }
