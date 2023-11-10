@@ -10,7 +10,6 @@ common = { path = "../common" }
 clap = { version = "=4.2.0", features = ["derive"] }
 maplit = { version = "1.0.2" }
 serde_cbor = { version = "0.11.1" }
-serde_json = { version = "1.0.66" }
 chrono = { version = "0.4.31" }
 rand = { version = "0.8.5" }
 
