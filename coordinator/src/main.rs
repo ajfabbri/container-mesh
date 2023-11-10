@@ -109,6 +109,7 @@ impl HeartbeatProcessor {
             println!("--> got heartbeat {:?}", hb);
             let mut peer_set = self.peer_set.lock().unwrap();
             peer_set.insert(hb.sender);
+            self.added.notify_all();
         }
     }
 }
