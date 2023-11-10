@@ -19,13 +19,13 @@ echo "Copying libdittoffi.so to /lib"
 find $ARCH/$FLAVOR -name libdittoffi.so \
     -exec cp {} /lib \;
 
-echo "---> env"
-env
-set -x
+echo "ENV: "; env
 if [ "$FLAVOR" = "debug" ]; then
+    set -x
     export RUST_BACKTRACE=1
 fi
 
+set -x
 uname -a
 PBIN="./$ARCH/$FLAVOR/cmesh-peer"
 file $PBIN

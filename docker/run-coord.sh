@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+FLAVOR=${FLAVOR:-debug}
+
 echo "Running docker/run-coord.sh from $(pwd)"
 echo "FLAVOR=$FLAVOR, ARCH=$ARCH"
 echo "Current directory contents:\
@@ -17,7 +19,9 @@ echo "Copying libdittoffi.so to /lib"
 find $ARCH/$FLAVOR -name libdittoffi.so \
     -exec cp {} /lib \;
 
+echo "ENV: "; env
 if [ "$FLAVOR" = "debug" ]; then
+    set -x
     export RUST_BACKTRACE=1
 fi
 

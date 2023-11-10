@@ -4,9 +4,6 @@ use std::time::Duration;
 
 pub use crate::default;
 
-// define constant document id
-pub const DEFAULT_DOC_ID: &str = "default_doc_id";
-
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Peer {
     pub peer_id: u64,
@@ -32,6 +29,12 @@ impl Hash for Heartbeat {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.sender.hash(state);
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HeartbeatsDoc {
+    // A vec of latest heartbeat record for each peer
+    pub beats: Vec<Heartbeat>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
