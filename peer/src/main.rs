@@ -171,6 +171,7 @@ fn bootstrap_peer<'a>(
         .collection(&cli.coord_collection)
         .expect("collection create");
 
+    let coord_sub = coord_coll.find_all().subscribe();
     // wait until we get an initial CoordinatorInfo
     let init_info;
     loop {
