@@ -2,6 +2,7 @@ version: '2'
 
 services:
     coordinator:
+        container_name: coordinator
         build:
             context: .
             dockerfile: ./docker/Dockerfile.coord
@@ -13,19 +14,21 @@ services:
                 DITTO_PG_TOKEN: "${DITTO_PG_TOKEN}"
                 DITTO_LICENSE: "${DITTO_LICENSE}"
 
-        ports:
-            - "4000-4099:4000-4099"
+        expose: ["4000-4099"]
+#       ports:
+#          - "4000-4099:4000-4099"
         networks:
             mesh:
                 ipv4_address: 10.1.0.2
 
-
     # XXX copy-pasta peers for testing, should probably just script it.
     peer1:
+        container_name: peer1
         build:
             context: .
             dockerfile: ./docker/Dockerfile.peer
             args:
+                DEVICE_NAME: "peer1"
                 FLAVOR:
                 BIND_ADDR: 0.0.0.0
                 BIND_PORT: 4101
@@ -34,8 +37,9 @@ services:
                 DITTO_APP_ID: "${DITTO_APP_ID}"
                 DITTO_PG_TOKEN: "${DITTO_PG_TOKEN}"
                 DITTO_LICENSE: "${DITTO_LICENSE}"
-        ports:
-            - "4100-4199:4100-4199"
+        expose: ["4100-4199"]
+#       ports:
+#           - "4100-4199:4100-4199"
         networks:
             - mesh
 

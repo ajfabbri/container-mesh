@@ -2,6 +2,7 @@
 #FROM alpine:3.18 <- need to figure out musl build to get this working
 FROM ubuntu:22.04
 
+ARG DEVICE_NAME
 ARG FLAVOR
 ARG ARCH
 ARG DITTO_LICENSE
@@ -13,6 +14,7 @@ ARG COORD_ADDR
 ARG COORD_PORT=4001
 ARG ARCH=x86_64-unknown-linux-gnu
 
+ENV DEVICE_NAME=${DEVICE_NAME}
 ENV FLAVOR=${FLAVOR}
 ENV ARCH=${ARCH}
 ENV DITTO_LICENSE=${DITTO_LICENSE}
@@ -33,4 +35,4 @@ COPY ./target/${ARCH} ./${ARCH}
 COPY ./docker/run-peer.sh .
 
 CMD ["bash", "-c", \
-"./run-peer.sh --bind-addr ${BIND_ADDR} --bind-port $BIND_PORT --coord-addr $COORD_ADDR --coord-port $COORD_PORT"]
+"./run-peer.sh --bind-addr ${BIND_ADDR} --bind-port $BIND_PORT --coord-addr $COORD_ADDR --coord-port $COORD_PORT --device-name $DEVICE_NAME"]
