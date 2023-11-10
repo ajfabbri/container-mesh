@@ -148,8 +148,9 @@ fn wait_for_quorum(
     );
 
     // Set up heartbeats document and  consumer
-    println!("XXX -> create empty heartbeats doc");
+    println!("XXX -> create empty heartbeats doc and subscribing");
     let hbc = store.collection(HEARTBEAT_COLLECTION_NAME)?;
+    hbc.find_all().subscribe();
     ctx.hb_doc_id = Some(hbc.upsert(HeartbeatsDoc { beats: Vec::new() })?);
     ctx.hb_collection = Some(hbc);
 
