@@ -167,7 +167,7 @@ fn bootstrap_peer<'a>(
     pctx.ditto.start_sync().expect("start_sync");
 
     let store = pctx.ditto.store();
-    let collection = store
+    let coord_coll = store
         .collection(&cli.coord_collection)
         .expect("collection create");
 
@@ -177,9 +177,9 @@ fn bootstrap_peer<'a>(
     loop {
         println!(
             "--> Polling for CoordinatorInfo on {:?}...",
-            collection.name()
+            coord_coll.name()
         );
-        match collection.find_all().exec() {
+        match coord_coll.find_all().exec() {
             Err(e) => println!("Error: {:?}", e),
             Ok(plan) => {
                 let n = plan.len();
@@ -234,7 +234,7 @@ fn bootstrap_peer<'a>(
     // wait for execution plan
     loop {
         // XXX subscribe w/ callback instead of polling
-        let doc_result = collection
+        let doc_result = coord_coll
             .find_by_id(pctx.coord_doc_id.as_ref().unwrap())
             .exec();
         if let Err(e) = doc_result {
