@@ -152,41 +152,41 @@ fn wait_for_quorum(
     // Set up heartbeats document and  consumer
     println!("XXX -> create empty heartbeats doc and subscribing");
     let hbc = store.collection(HEARTBEAT_COLLECTION_NAME)?;
-    hbc.find_all().subscribe();
     ctx.hb_doc_id = Some(hbc.upsert(HeartbeatsDoc { beats: Vec::new() })?);
     ctx.hb_collection = Some(hbc);
 
     println!("XXX -> set up heartbeat consumer");
-    let coll = ctx.hb_collection.as_ref().unwrap();
+    let hb_coll = ctx.hb_collection.as_ref().unwrap();
+    let hb_query = hb_coll.find_by_id(ctx.hb_doc_id.as_ref().unwrap());
+    let _hb_sub = hb_query.subscribe();
     let hbp = Arc::new(HeartbeatProcessor {
         peer_set: Arc::clone(&ctx.peers),
         added: Condvar::new(),
     });
     let cb = hbp.clone();
-    let _peer_observer = coll
-        .find_all()
-        .observe_local(move |docs: Vec<BoxedDocument>, event| {
-            println!(
-                "XXX -> observe_local event {:?} with N={}",
-                event,
-                docs.len()
-            );
-            docs.iter().for_each(|doc| {
-                let r = doc.typed::<HeartbeatsDoc>();
-                match r {
-                    Ok(hb) => cb.process_heartbeat(hb),
-                    Err(e) => {
-                        println!("Heartbeat deser Error {:?}", e);
-                        let p = doc.to_cbor().unwrap();
-                        println!("Received heartbeat cbor {:?}", p);
-                    }
+    let _hb_observer = hb_query
+        .observe_local(move |doc: Option<BoxedDocument>, event| {
+            println!("XXX -> observe_local event {:?}", event);
+            if doc.is_none() {
+                return;
+            }
+            let r = doc.as_ref().unwrap().typed::<HeartbeatsDoc>();
+            match r {
+                Ok(hb) => cb.process_heartbeat(hb),
+                Err(e) => {
+                    println!("Heartbeat deser Error {:?}", e);
+                    let p = doc.unwrap().to_cbor().unwrap();
+                    println!("Received heartbeat cbor {:?}", p);
                 }
-            });
+            }
         })
         .unwrap();
 
+    // Wait for hearteats to populate peers set
     loop {
+        println!("XXX -> wait for peers");
         let peers = hbp.peer_set.lock().unwrap();
+        println!("XXX -> have peers lock");
         let n: u32 = peers.len().try_into().unwrap();
         if n >= min_peers {
             println!(
@@ -220,7 +220,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
     println!("XXX -> init ditto");
     init_transport(&mut ctx, &cli)?;
-    ctx.ditto.set_license_from_env("DITTO_LICENSE")?; ctx.ditto.start_sync()?;
+    ctx.ditto.set_license_from_env("DITTO_LICENSE")?;
+    ctx.ditto.start_sync()?;
 
     println!("XXX -> wait for quorum");
     wait_for_quorum(&mut ctx, &cli.coord_collection, cli.min_peers)?;
