@@ -10,3 +10,6 @@ serde = { version = "1.0.130", features = ["derive"] }
 serde_derive = "1.0.130"
 serde_cbor = "0.11.1"
 rand = "0.8.5"
+
+dittolive-ditto.path = "../../ditto/rust/dittolive-ditto"
+#dittolive-ditto = { version = "4.4.2" }
