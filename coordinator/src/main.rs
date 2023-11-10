@@ -1,6 +1,7 @@
 use clap::Parser;
 use common::default::HEARTBEAT_COLLECTION_NAME;
 use common::types::*;
+use common::util::*;
 use dittolive_ditto::error::DittoError;
 use dittolive_ditto::prelude::*;
 use std::collections::HashSet;
@@ -131,8 +132,8 @@ fn wait_for_quorum(
     let store = ctx.ditto.store();
 
     // Set up presence monitoring so we can tell if peers are connecting
-    let _presence = ctx.ditto.presence().observe( |graph| {
-        println!("XXX -> presence update {:?}", graph);
+    let _presence = ctx.ditto.presence().observe(|graph| {
+        println!("XXX -> presence update {}", concise_presence(graph));
     });
 
     // Populate coord. collection with initial info.
