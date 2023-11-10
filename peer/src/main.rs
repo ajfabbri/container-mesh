@@ -5,7 +5,6 @@ use dittolive_ditto::error::DittoError;
 use dittolive_ditto::prelude::*;
 use std::collections::HashSet;
 use std::error::Error;
-use std::io;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::thread;
@@ -77,13 +76,6 @@ fn init_transport(ditto: &mut Ditto, cli: &Cli) -> Result<(), Box<dyn Error>> {
     );
     println!("XXX --> config: {:?}", config);
     ditto.set_transport_config(config);
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn print_cdoc(cbor: &serde_cbor::Value) -> Result<(), io::Error> {
-    serde_json::to_writer_pretty(std::io::stdout(), cbor)?;
-    println!();
     Ok(())
 }
 
