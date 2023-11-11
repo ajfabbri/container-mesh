@@ -1,6 +1,8 @@
 use crate::types::Heartbeat;
 use dittolive_ditto::transport::{Peer, PresenceGraph};
 use std::time;
+use std::io;
+use serde_json;
 
 pub fn system_time_msec() -> u64 {
     time::SystemTime::now()
@@ -37,4 +39,10 @@ pub fn concise_presence(pg: &PresenceGraph) -> String {
     }
     out.push(']');
     out
+}
+
+pub fn print_cdoc(cbor: &serde_cbor::Value) -> Result<(), io::Error> {
+    serde_json::to_writer_pretty(std::io::stdout(), cbor)?;
+    println!();
+    Ok(())
 }
