@@ -6,7 +6,7 @@ use dittolive_ditto::prelude::*;
 use std::collections::HashSet;
 use std::error::Error;
 use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 #[derive(Parser, Debug)]
@@ -81,51 +81,64 @@ fn init_transport(ditto: &mut Ditto, cli: &Cli) -> Result<(), Box<dyn Error>> {
 
 #[derive(Clone)]
 struct HeartbeatCtx {
-    peer_id: u64,
+    peer_id: PeerId,
     record: Heartbeat,
     doc: HeartbeatsDoc,
+    doc_id: DocumentId,
     finished: Arc<AtomicBool>,
-    collection: Collection,
+    hb_collection: Arc<Mutex<Collection>>,
 }
 
 struct PeerContext {
-    id: u64,
+    id: PeerId,
     ditto: Ditto,
     coord_doc_id: Option<DocumentId>,
     coord_info: Option<CoordinatorInfo>,
+    #[allow(dead_code)]
     hb_doc_id: Option<DocumentId>,
+    hb_collection: Option<Arc<Mutex<Collection>>>,
+    hb_subscription: Option<Subscription>,
+    #[allow(dead_code)]
     start_time_msec: u64,
 }
 
 // implement new
 impl HeartbeatCtx {
-    fn new(peer_id: u64, record: Heartbeat, doc: HeartbeatsDoc, collection: Collection) -> Self {
+    fn new(
+        peer_id: PeerId,
+        record: Heartbeat,
+        doc: HeartbeatsDoc,
+        doc_id: DocumentId,
+        hb_collection: Arc<Mutex<Collection>>,
+    ) -> Self {
         HeartbeatCtx {
             peer_id,
             record,
             doc,
+            doc_id,
             finished: Arc::new(AtomicBool::new(false)),
-            collection,
+            hb_collection,
         }
     }
 }
 
 fn heartbeat_send(hctx: &mut HeartbeatCtx) {
-    // find our id in the doc and update it
-    // TODO may not be the most Ditto-idiomatic way to do this..
-    let mut found = false;
-    for hb in hctx.doc.beats.iter_mut() {
-        if hb.sender.peer_id == hctx.peer_id {
-            hb.sent_at_msec = system_time_msec();
-            found = true;
-            break;
-        }
-    }
-    if !found {
-        println!("Adding self (id={}) to heartbeat doc", hctx.peer_id);
-        hctx.record.update_timestamp();
-        hctx.doc.beats.push(hctx.record.clone());
-    }
+    println!("---> heartbeat_send");
+    let hbc_lock = hctx.hb_collection.lock().unwrap();
+    hctx.record.update_timestamp();
+    println!("---> heartbeat_send: update");
+    hbc_lock
+        .find_by_id(hctx.doc_id.clone())
+        .update(|mut_doc| {
+            let mut_doc = mut_doc.unwrap();
+            mut_doc
+                .set(
+                    &vec!["beats", &hctx.peer_id.to_string()].join("."),
+                    hctx.record.clone(),
+                )
+                .expect("mutate heartbeat doc");
+        })
+        .expect("update heartbeat doc");
 }
 
 fn heartbeat_start(hctx: HeartbeatCtx) -> Result<(), std::io::Error> {
@@ -206,19 +219,25 @@ fn bootstrap_peer<'a>(
     pctx.coord_info = init_info;
     let hb_record = Heartbeat {
         sender: Peer {
-            peer_id: pctx.id,
+            peer_id: pctx.id.clone(),
             peer_ip_addr: std::net::IpAddr::V4(cli.bind_addr.parse()?),
         },
         sent_at_msec: 0,
     };
 
-    // Fetch heartbeat doc and start heartbeat timer
-    let hbc = store.collection(&pctx.coord_info.as_ref().unwrap().heartbeat_collection_name)?;
-    let _hb_sub = hbc.find_all().subscribe();
+    // Fetch initial heartbeat doc and start heartbeat timer
+    let _hbc = store.collection(&pctx.coord_info.as_ref().unwrap().heartbeat_collection_name)?;
+    let hbc = Arc::new(Mutex::new(_hbc));
     // retry until we get a heartbeat doc
-    let hb_doc;
+    let (hb_doc, hb_doc_id);
     loop {
-        let r = hbc
+        let hbc_lock = hbc.lock().unwrap();
+        // lazy-init context's heartbeat subscription and collection
+        if pctx.hb_subscription.is_none() {
+            pctx.hb_subscription = Some(hbc_lock.find_all().subscribe());
+            pctx.hb_collection = Some(hbc.clone());
+        }
+        let r = hbc_lock
             .find_all()
             .exec()
             .expect("Expected to find heartbeat doc");
@@ -229,14 +248,11 @@ fn bootstrap_peer<'a>(
                 println!("Warning: multiple heartbeat docs, using first.");
             }
             hb_doc = r[0].typed::<HeartbeatsDoc>()?;
+            hb_doc_id = r[0].id();
             break;
         }
     }
-    //    return Err(Box::new(std::io::Error::new(
-    //        std::io::ErrorKind::NotFound,
-    //        "No heartbeat doc found",
-    //    )));
-    let hctx = HeartbeatCtx::new(pctx.id, hb_record, hb_doc, hbc);
+    let hctx = HeartbeatCtx::new(pctx.id.clone(), hb_record, hb_doc, hb_doc_id, hbc);
     heartbeat_start(hctx.clone())?;
 
     // wait for execution plan
@@ -267,11 +283,13 @@ fn bootstrap_peer<'a>(
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     let mut pctx = PeerContext {
-        id: rand::random::<u64>(),
+        id: random_peer_id(),
         coord_doc_id: None,
         ditto: make_ditto(&cli.device_name)?,
         coord_info: None,
         hb_doc_id: None,
+        hb_collection: None,
+        hb_subscription: None,
         start_time_msec: system_time_msec(),
     };
     println!("Args {:?}", cli);

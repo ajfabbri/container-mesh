@@ -23,7 +23,9 @@ fn concise_peer(p: &Peer) -> String {
     format!(
         "{}:{}",
         p.device_name,
-        p.ditto_sdk_version.as_ref().unwrap_or(&"? ver.".to_string())
+        p.ditto_sdk_version
+            .as_ref()
+            .unwrap_or(&"? ver.".to_string())
     )
 }
 
