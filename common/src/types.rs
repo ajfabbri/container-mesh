@@ -1,12 +1,18 @@
 use serde_derive::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::time::Duration;
 
 pub use crate::default;
+pub type PeerId = String;
+
+pub fn random_peer_id() -> PeerId {
+    format!("{:x}", rand::random::<u64>())
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Peer {
-    pub peer_id: u64,
+    pub peer_id: PeerId,
     pub peer_ip_addr: std::net::IpAddr,
 }
 
@@ -34,7 +40,7 @@ impl Hash for Heartbeat {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HeartbeatsDoc {
     // A vec of latest heartbeat record for each peer
-    pub beats: Vec<Heartbeat>,
+    pub beats: HashMap<PeerId, Heartbeat>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

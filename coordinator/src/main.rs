@@ -4,7 +4,7 @@ use common::types::*;
 use common::util::*;
 use dittolive_ditto::error::DittoError;
 use dittolive_ditto::prelude::*;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use std::error::Error;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
@@ -105,7 +105,7 @@ struct HeartbeatProcessor {
 impl HeartbeatProcessor {
     fn process_heartbeat(&self, hbd: HeartbeatsDoc) {
         println!("--> process {} peer heartbeats", hbd.beats.len());
-        for hb in hbd.beats {
+        for (peer_id, hb) in hbd.beats {
             println!("--> got heartbeat {:?}", hb);
             let mut peer_set = self.peer_set.lock().unwrap();
             peer_set.insert(hb.sender);
@@ -152,7 +152,7 @@ fn wait_for_quorum(
     // Set up heartbeats document and  consumer
     println!("XXX -> create empty heartbeats doc and subscribing");
     let hbc = store.collection(HEARTBEAT_COLLECTION_NAME)?;
-    ctx.hb_doc_id = Some(hbc.upsert(HeartbeatsDoc { beats: Vec::new() })?);
+    ctx.hb_doc_id = Some(hbc.upsert(HeartbeatsDoc { beats: HashMap::new() })?);
     ctx.hb_collection = Some(hbc);
 
     println!("XXX -> set up heartbeat consumer");
@@ -172,11 +172,17 @@ fn wait_for_quorum(
             }
             let r = doc.as_ref().unwrap().typed::<HeartbeatsDoc>();
             match r {
-                Ok(hb) => cb.process_heartbeat(hb),
+                Ok(hb) => {
+                    let p = doc.unwrap().to_cbor().unwrap();
+                    println!("OK received heartbeat:");
+                    print_cdoc(&p).unwrap();
+                    cb.process_heartbeat(hb);
+                }
                 Err(e) => {
                     println!("Heartbeat deser Error {:?}", e);
                     let p = doc.unwrap().to_cbor().unwrap();
-                    println!("Received heartbeat cbor {:?}", p);
+                    println!("received heartbeat:");
+                    print_cdoc(&p).unwrap();
                 }
             }
         })
@@ -225,5 +231,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("XXX -> wait for quorum");
     wait_for_quorum(&mut ctx, &cli.coord_collection, cli.min_peers)?;
+    println!("XXX -> got quorum");
     Ok(())
 }
