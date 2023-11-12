@@ -50,8 +50,17 @@ pub fn print_cdoc(cbor: &serde_cbor::Value) -> Result<(), io::Error> {
     Ok(())
 }
 
+pub fn resolve_local_ip(config_addr: Option<String>) -> String {
+    let default_if_addr = local_ip().unwrap().to_string();
+    println!(
+        "==> Local IP address: {}, config: {:?}",
+        default_if_addr, config_addr
+    );
+    config_addr.unwrap_or(default_if_addr)
+}
+
+#[allow(dead_code)]
 pub fn show_local_ips() {
-    println!("==> Local IP address: {}", local_ip().unwrap());
     let network_interfaces = list_afinet_netifas().unwrap();
 
     for (name, ip) in network_interfaces.iter() {

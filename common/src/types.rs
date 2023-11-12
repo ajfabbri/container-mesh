@@ -13,7 +13,7 @@ pub fn random_peer_id() -> PeerId {
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Peer {
     pub peer_id: PeerId,
-    pub peer_ip_addr: std::net::IpAddr,
+    pub peer_ip_addr: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
