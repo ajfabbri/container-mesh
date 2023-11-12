@@ -266,10 +266,12 @@ fn bootstrap_peer<'a>(
             println!("Error finding doc in coord. collection: {:?}", e);
             continue;
         }
-        if let Ok(plan) = doc_result {
-            let foo = plan.typed::<CoordinatorInfo>()?;
-            pctx.coord_info = Some(foo);
-            break;
+        if let Ok(bd) = doc_result {
+            let coord_info = bd.typed::<CoordinatorInfo>()?;
+            pctx.coord_info = Some(coord_info);
+            if pctx.coord_info.as_ref().unwrap().execution_plan.is_some() {
+                break;
+            }
         }
         std::thread::sleep(std::time::Duration::from_secs(1));
     }

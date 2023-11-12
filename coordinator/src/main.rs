@@ -1,5 +1,5 @@
 use clap::Parser;
-use common::default::HEARTBEAT_COLLECTION_NAME;
+use common::default::*;
 use common::types::*;
 use common::util::*;
 use dittolive_ditto::error::DittoError;
@@ -106,10 +106,11 @@ struct HeartbeatProcessor {
 impl HeartbeatProcessor {
     fn process_heartbeat(&self, hbd: HeartbeatsDoc) {
         println!("--> process {} peer heartbeats", hbd.beats.len());
-        for (peer_id, hb) in hbd.beats {
+        for (_peer_id, hb) in hbd.beats {
             println!("--> got heartbeat {:?}", hb);
             let mut peer_set = self.peer_set.lock().unwrap();
             peer_set.insert(hb.sender);
+            println!("--> peer set: {:?}", peer_set);
             self.added.notify_all();
         }
     }
@@ -211,6 +212,12 @@ fn wait_for_quorum(
     Ok(())
 }
 
+fn generate_plan(ctx: &CoordinatorContext) -> ExecutionPlan {
+    let mut plan = ExecutionPlan::default();
+    plan.test_duration_sec = 60;
+    plan
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     println!("Args {:?}", cli);
@@ -232,6 +239,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("XXX -> wait for quorum");
     wait_for_quorum(&mut ctx, &cli.coord_collection, cli.min_peers)?;
-    println!("XXX -> got quorum");
+    println!("XXX -> got quorum, writing test plan..");
+    let plan = generate_plan(&ctx);
+    update_coord_info(ctx.coord_collection.as_ref().unwrap(), Some(plan))?;
     Ok(())
 }
