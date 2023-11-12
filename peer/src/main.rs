@@ -20,11 +20,11 @@ struct Cli {
     #[arg(long, default_value_t = 4001)]
     coord_port: u32,
 
-    #[arg(short, long, default_value = "0.0.0.0")]
-    bind_addr: String,
+    #[arg(short, long)]
+    bind_addr: Option<String>,
 
-    #[arg(short = 'p', long, default_value_t = 4001)]
-    bind_port: u32,
+    #[arg(short = 'p', long)]
+    bind_port: Option<u32>,
 
     #[arg(short, long, default_value = "peer")]
     device_name: String,
@@ -60,23 +60,24 @@ fn make_ditto(device_name: &str) -> Result<Ditto, DittoError> {
     Ok(ditto)
 }
 
-fn init_transport(ditto: &mut Ditto, cli: &Cli) -> Result<(), Box<dyn Error>> {
+fn init_transport(pctx: &PeerContext, cli: &Cli) -> Result<(), Box<dyn Error>> {
     let mut config = TransportConfig::default();
     config.peer_to_peer.lan.enabled = true;
     // fail fast
     let _ip_addr: std::net::IpAddr = cli.coord_addr.parse()?;
-    show_local_ips();
     config.connect.tcp_servers = HashSet::from([format!("{}:{}", cli.coord_addr, cli.coord_port)]);
     config.connect.websocket_urls = HashSet::new();
     config.listen.tcp.enabled = true;
-    config.listen.tcp.interface_ip = cli.bind_addr.clone();
-    config.listen.tcp.port = cli.bind_port.try_into()?;
+    config.listen.tcp.interface_ip = pctx.local_ip.clone();
+    if cli.bind_port.is_some() {
+        config.listen.tcp.port = cli.bind_port.unwrap_or(0).try_into()?;
+    }
     println!(
         "-> set transport config {}:{}",
         config.listen.tcp.interface_ip, config.listen.tcp.port
     );
     println!("XXX --> config: {:?}", config);
-    ditto.set_transport_config(config);
+    pctx.ditto.set_transport_config(config);
     Ok(())
 }
 
@@ -101,6 +102,7 @@ struct PeerContext {
     hb_subscription: Option<Subscription>,
     #[allow(dead_code)]
     start_time_msec: u64,
+    local_ip: String,
 }
 
 // implement new
@@ -176,7 +178,7 @@ fn bootstrap_peer<'a>(
         cli.coord_collection
     );
     println!("-> init ditto");
-    init_transport(&mut pctx.ditto, &cli)?;
+    init_transport(&pctx, &cli)?;
     pctx.ditto.set_license_from_env("DITTO_LICENSE")?;
     pctx.ditto.start_sync().expect("start_sync");
 
@@ -221,7 +223,7 @@ fn bootstrap_peer<'a>(
     let hb_record = Heartbeat {
         sender: Peer {
             peer_id: pctx.id.clone(),
-            peer_ip_addr: std::net::IpAddr::V4(cli.bind_addr.parse()?),
+            peer_ip_addr: pctx.local_ip.clone(),
         },
         sent_at_msec: 0,
     };
@@ -294,6 +296,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         hb_collection: None,
         hb_subscription: None,
         start_time_msec: system_time_msec(),
+        local_ip: resolve_local_ip(cli.bind_addr.clone())
     };
     println!("Args {:?}", cli);
     bootstrap_peer(&mut pctx, &cli)?;
