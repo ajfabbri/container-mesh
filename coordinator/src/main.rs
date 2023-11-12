@@ -80,6 +80,7 @@ fn make_ditto() -> Result<Ditto, DittoError> {
 
 fn init_transport(ctx: &mut CoordinatorContext, cli: &Cli) -> Result<(), Box<dyn Error>> {
     let mut config = TransportConfig::default();
+    show_local_ips();
     config.peer_to_peer.lan.enabled = true;
     // initialize peer set with coordinator's address and port
     config.connect.tcp_servers = HashSet::new();
@@ -175,7 +176,7 @@ fn wait_for_quorum(
                 Ok(hb) => {
                     let p = doc.unwrap().to_cbor().unwrap();
                     println!("OK received heartbeat:");
-                    print_cdoc(&p).unwrap();
+                    //print_cdoc(&p).unwrap();
                     cb.process_heartbeat(hb);
                 }
                 Err(e) => {

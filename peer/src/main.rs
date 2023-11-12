@@ -65,6 +65,7 @@ fn init_transport(ditto: &mut Ditto, cli: &Cli) -> Result<(), Box<dyn Error>> {
     config.peer_to_peer.lan.enabled = true;
     // fail fast
     let _ip_addr: std::net::IpAddr = cli.coord_addr.parse()?;
+    show_local_ips();
     config.connect.tcp_servers = HashSet::from([format!("{}:{}", cli.coord_addr, cli.coord_port)]);
     config.connect.websocket_urls = HashSet::new();
     config.listen.tcp.enabled = true;
