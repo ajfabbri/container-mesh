@@ -39,7 +39,8 @@ services:
 #       ports:
 #           - "4100-4199:4100-4199"
         networks:
-            - mesh
+            mesh:
+                ipv4_address: 10.1.0.3
 
     # XXX copy-pasta peers for testing, should probably just script it.
     peer2:
@@ -60,7 +61,8 @@ services:
 #       ports:
 #           - "4100-4199:4100-4199"
         networks:
-            - mesh
+            mesh:
+                ipv4_address: 10.1.0.4
     peer3:
         container_name: peer3
         build:
@@ -79,7 +81,8 @@ services:
 #       ports:
 #           - "4100-4199:4100-4199"
         networks:
-            - mesh
+            mesh:
+                ipv4_address: 10.1.0.5
 
 networks:
     mesh:
