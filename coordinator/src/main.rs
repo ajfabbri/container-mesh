@@ -35,7 +35,6 @@ struct Cli {
 }
 
 struct CoordinatorContext {
-    id: u64,
     ditto: Ditto,
     plan: Option<ExecutionPlan>,
     start_time_msec: u64,
@@ -211,7 +210,7 @@ fn wait_for_quorum(
     Ok(())
 }
 
-fn generate_plan(ctx: &CoordinatorContext) -> ExecutionPlan {
+fn generate_plan(_ctx: &CoordinatorContext) -> ExecutionPlan {
     let mut plan = ExecutionPlan::default();
     plan.test_duration_sec = 60;
     plan
@@ -221,7 +220,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     println!("Args {:?}", cli);
     let mut ctx = CoordinatorContext {
-        id: 0,
         ditto: make_ditto()?,
         plan: None,
         start_time_msec: 0,

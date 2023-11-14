@@ -85,7 +85,6 @@ fn init_transport(pctx: &PeerContext, cli: &Cli) -> Result<(), Box<dyn Error>> {
 struct HeartbeatCtx {
     peer_id: PeerId,
     record: Heartbeat,
-    doc: HeartbeatsDoc,
     doc_id: DocumentId,
     finished: Arc<AtomicBool>,
     hb_collection: Arc<Mutex<Collection>>,
@@ -110,14 +109,12 @@ impl HeartbeatCtx {
     fn new(
         peer_id: PeerId,
         record: Heartbeat,
-        doc: HeartbeatsDoc,
         doc_id: DocumentId,
         hb_collection: Arc<Mutex<Collection>>,
     ) -> Self {
         HeartbeatCtx {
             peer_id,
             record,
-            doc,
             doc_id,
             finished: Arc::new(AtomicBool::new(false)),
             hb_collection,
@@ -187,7 +184,7 @@ fn bootstrap_peer<'a>(
         .collection(&cli.coord_collection)
         .expect("collection create");
 
-    let coord_sub = coord_coll.find_all().subscribe();
+    let _coord_sub = coord_coll.find_all().subscribe();
     // wait until we get an initial CoordinatorInfo
     let init_info;
     loop {
@@ -232,7 +229,7 @@ fn bootstrap_peer<'a>(
     let _hbc = store.collection(&pctx.coord_info.as_ref().unwrap().heartbeat_collection_name)?;
     let hbc = Arc::new(Mutex::new(_hbc));
     // retry until we get a heartbeat doc
-    let (hb_doc, hb_doc_id);
+    let hb_doc_id;
     loop {
         let hbc_lock = hbc.lock().unwrap();
         // lazy-init context's heartbeat subscription and collection
@@ -250,12 +247,11 @@ fn bootstrap_peer<'a>(
             if r.len() > 1 {
                 println!("Warning: multiple heartbeat docs, using first.");
             }
-            hb_doc = r[0].typed::<HeartbeatsDoc>()?;
             hb_doc_id = r[0].id();
             break;
         }
     }
-    let hctx = HeartbeatCtx::new(pctx.id.clone(), hb_record, hb_doc, hb_doc_id, hbc);
+    let hctx = HeartbeatCtx::new(pctx.id.clone(), hb_record, hb_doc_id, hbc);
     heartbeat_start(hctx.clone())?;
 
     // wait for execution plan
