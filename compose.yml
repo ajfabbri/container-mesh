@@ -18,8 +18,8 @@ services:
 #       ports:
 #          - "4000-4099:4000-4099"
         networks:
-            mesh:
-                ipv4_address: 10.1.0.2
+          mesh:
+            ipv4_address: 10.1.0.2
 
     peer1:
         container_name: peer1
@@ -39,8 +39,7 @@ services:
 #       ports:
 #           - "4100-4199:4100-4199"
         networks:
-            mesh:
-                ipv4_address: 10.1.0.3
+          - mesh
 
     # XXX copy-pasta peers for testing, should probably just script it.
     peer2:
@@ -61,8 +60,8 @@ services:
 #       ports:
 #           - "4100-4199:4100-4199"
         networks:
-            mesh:
-                ipv4_address: 10.1.0.4
+          - mesh
+
     peer3:
         container_name: peer3
         build:
@@ -81,8 +80,7 @@ services:
 #       ports:
 #           - "4100-4199:4100-4199"
         networks:
-            mesh:
-                ipv4_address: 10.1.0.5
+          - mesh
 
 networks:
     mesh:
@@ -91,4 +89,6 @@ networks:
             config:
                 - subnet: 10.1.0.0/16
                   gateway: 10.1.0.1
+                  # keep static IPs from clashing w/ assigned
+                  ip_range: 10.1.1.0/24
 
