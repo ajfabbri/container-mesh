@@ -6,8 +6,14 @@ use std::time::Duration;
 pub use crate::default;
 pub type PeerId = String;
 
-pub fn random_peer_id() -> PeerId {
-    format!("{:x}", rand::random::<u64>())
+pub fn random_peer_id(prefix: Option<&str>) -> PeerId {
+    let pre;
+    if prefix.is_none() {
+        pre = String::new();
+    } else {
+        pre = format!("{}_", prefix.unwrap());
+    }
+    format!("{}{:x}", pre, rand::random::<u64>())
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
