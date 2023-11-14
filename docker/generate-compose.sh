@@ -1,3 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+scale=$1
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+cat <<'EOT'
 version: '2'
 
 services:
@@ -20,47 +27,39 @@ services:
         networks:
           mesh:
             ipv4_address: 10.1.0.2
+EOT
 
-    peer1:
-        container_name: peer1
+for (( i = 0; i<scale; i++)); do
+    block_sz=10
+    beginport=$((5100 + ( i * block_sz) ))
+    endport=$((beginport + block_sz - 1))
+    cat <<EOT
+    peer$i:
+        container_name: peer$i
         build:
             context: .
             dockerfile: ./docker/Dockerfile.peer
             args:
-                DEVICE_NAME: "peer1"
+                DEVICE_NAME: "peer$i"
                 FLAVOR:
-                BIND_PORT: 5101
+                BIND_PORT: $beginport
                 COORD_ADDR: 10.1.0.2
                 COORD_PORT: 4001
+EOT
+
+    cat <<'EOT'
                 DITTO_APP_ID: "${DITTO_APP_ID}"
                 DITTO_PG_TOKEN: "${DITTO_PG_TOKEN}"
                 DITTO_LICENSE: "${DITTO_LICENSE}"
-                    #        expose: ["5100-5199"]
-#       ports:
-#           - "4100-4199:4100-4199"
+EOT
+    cat <<EOT
+        expose: ["$beginport-$endport"]
         networks:
           - mesh
+EOT
+done
 
-    peer2:
-        container_name: peer2
-        build:
-            context: .
-            dockerfile: ./docker/Dockerfile.peer
-            args:
-                DEVICE_NAME: "peer2"
-                FLAVOR:
-                BIND_PORT: 5102
-                COORD_ADDR: 10.1.0.2
-                COORD_PORT: 4001
-                DITTO_APP_ID: "${DITTO_APP_ID}"
-                DITTO_PG_TOKEN: "${DITTO_PG_TOKEN}"
-                DITTO_LICENSE: "${DITTO_LICENSE}"
-                    #        expose: ["5100-5199"]
-#       ports:
-#           - "4100-4199:4100-4199"
-        networks:
-          - mesh
-
+cat <<EOT
 networks:
     mesh:
         driver: bridge
@@ -70,4 +69,5 @@ networks:
                   gateway: 10.1.0.1
                   # keep static IPs from clashing w/ assigned
                   ip_range: 10.1.1.0/24
+EOT
 
