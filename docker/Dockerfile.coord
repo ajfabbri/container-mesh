@@ -26,7 +26,8 @@ RUN apt update && apt install iproute2 bash file findutils -y
 
 WORKDIR /root
 # copy rust binaries from target/
-COPY ./target/${ARCH} ./${ARCH}
+COPY ./target/${ARCH}/${FLAVOR:-release}/cmesh-coordinator ./${ARCH}/${FLAVOR:-release}/
+COPY ./target/${ARCH}/${FLAVOR:-release}/**/libdittoffi.so ./${ARCH}/${FLAVOR:-release}/
 COPY ./docker/run-coord.sh .
 
 CMD ["bash", "-c", \

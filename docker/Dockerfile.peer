@@ -31,7 +31,10 @@ RUN apt update && apt install iproute2 bash file findutils -y
 
 WORKDIR /root
 # copy rust binaries from target/
-COPY ./target/${ARCH} ./${ARCH}
+#COPY ./target/${ARCH} ./${ARCH}
+
+COPY ./target/${ARCH}/${FLAVOR:-release}/cmesh-peer ./${ARCH}/${FLAVOR:-RELEASE}/
+COPY ./target/${ARCH}/${FLAVOR:-release}/**/libdittoffi.so ./${ARCH}/${FLAVOR:-RELEASE}/
 COPY ./docker/run-peer.sh .
 
 CMD ["bash", "-c", \
