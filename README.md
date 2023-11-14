@@ -28,15 +28,22 @@ Tested with `DITTO_TARGET=x86_64-unknown-linux-gnu`
 
 ### To Run in Your Environment
 
+Config files:
+
+- .envrc    Environment variables needed for building (rust) agents.
+- .env      Non-secret vars to be set in containers at runtime.
+- .secret.env   Secret vars needed by containers at runtime.
+
 You'll need to create a file .secret.env that contains:
+
+export DITTO_APP_ID="your Ditto app id"
 
 For OfflinePlayground auth (current code):
 
 export DITTO_LICENSE="your ditto license string"
 
-For OnlinePlayround auth:
+For OnlinePlayround auth (currenly disabled):
 
-export DITTO_APP_ID="your online playground app id"
 export DITTO_PG_TOKEN="your playground token"
 
 I'm developing on Ubuntu 22.04 for target x86_64-unknown-linux-gnu
@@ -106,4 +113,5 @@ Some TODOs:
           coordinator and get CoordinatorInfo (heartbeat details + optional
           exec. plan)
 
-- Don't bake env vars into the image.. use env at container run time.
+- Move docker build args to just being runtime container vars where possible.
+- Use secrets instead of env. vars to pass license / app ID.
