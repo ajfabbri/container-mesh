@@ -15,10 +15,6 @@ for var in DITTO_APP_ID DITTO_PG_TOKEN DITTO_LICENSE; do
     fi
 done
 
-echo "Copying libdittoffi.so to /lib"
-find $ARCH/$FLAVOR -name libdittoffi.so \
-    -exec cp {} /lib \;
-
 echo "ENV: "; env
 if [ "$FLAVOR" = "debug" ]; then
     set -x
