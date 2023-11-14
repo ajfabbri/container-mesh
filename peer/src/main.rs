@@ -288,7 +288,7 @@ fn bootstrap_peer<'a>(
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     let mut pctx = PeerContext {
-        id: random_peer_id(),
+        id: random_peer_id(Some(&cli.device_name)),
         coord_doc_id: None,
         ditto: make_ditto(&cli.device_name)?,
         coord_info: None,
