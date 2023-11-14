@@ -106,3 +106,4 @@ Some TODOs:
           coordinator and get CoordinatorInfo (heartbeat details + optional
           exec. plan)
 
+- Don't bake env vars into the image.. use env at container run time.
