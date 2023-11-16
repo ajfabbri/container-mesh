@@ -42,6 +42,8 @@ struct CoordinatorContext {
     coord_doc_id: Option<DocumentId>,
     hb_collection: Option<Collection>,
     hb_doc_id: Option<DocumentId>,
+    hb_processor: Option<Arc<HeartbeatProcessor>>,
+    hb_observer: Option<LiveQuery>,
     peers: Arc<Mutex<HashSet<Peer>>>,
 }
 
@@ -99,6 +101,9 @@ fn init_transport(ctx: &mut CoordinatorContext, cli: &Cli) -> Result<(), Box<dyn
 struct HeartbeatProcessor {
     peer_set: Arc<Mutex<HashSet<Peer>>>,
     added: Condvar,
+    // To keep subscription alive as needed
+    #[allow(dead_code)]
+    subscription: Subscription,
 }
 
 impl HeartbeatProcessor {
@@ -125,11 +130,7 @@ fn update_coord_info(
     cc.upsert(ci)
 }
 
-fn wait_for_quorum(
-    ctx: &mut CoordinatorContext,
-    coord_collection: &str,
-    min_peers: usize,
-) -> Result<(), Box<dyn Error>> {
+fn init_coord_collection(ctx: &mut CoordinatorContext, coord_collection: &str) -> Result<(), Box<dyn Error>> {
     let store = ctx.ditto.store();
 
     // Populate coord. collection with initial info.
@@ -143,9 +144,14 @@ fn wait_for_quorum(
         "XXX --> wrote coord info doc id {}",
         ctx.coord_doc_id.as_ref().unwrap()
     );
+    Ok(())
+}
 
+fn init_heartbeat_processor(ctx: &mut CoordinatorContext) -> Result<(), Box<dyn Error>>
+{
     // Set up heartbeats document and  consumer
     println!("XXX -> create empty heartbeats doc and subscribing");
+    let store = ctx.ditto.store();
     let hbc = store.collection(HEARTBEAT_COLLECTION_NAME)?;
     ctx.hb_doc_id = Some(hbc.upsert(HeartbeatsDoc { beats: HashMap::new() })?);
     ctx.hb_collection = Some(hbc);
@@ -154,12 +160,13 @@ fn wait_for_quorum(
     let hb_coll = ctx.hb_collection.as_ref().unwrap();
     let hb_query = hb_coll.find_by_id(ctx.hb_doc_id.as_ref().unwrap());
     let _hb_sub = hb_query.subscribe();
-    let hbp = Arc::new(HeartbeatProcessor {
+    let cb = Arc::new(HeartbeatProcessor {
         peer_set: Arc::clone(&ctx.peers),
         added: Condvar::new(),
+        subscription: _hb_sub,
     });
-    let cb = hbp.clone();
-    let _hb_observer = hb_query
+    ctx.hb_processor = Some(cb.clone());
+    ctx.hb_observer = Some(hb_query
         .observe_local(move |doc: Option<BoxedDocument>, event| {
             println!("XXX -> observe_local event {:?}", event);
             if doc.is_none() {
@@ -181,8 +188,19 @@ fn wait_for_quorum(
                 }
             }
         })
-        .unwrap();
-        wait_for_peer_state(&hbp, PeerState::Init, min_peers)
+        .unwrap());
+        Ok(())
+}
+
+fn wait_for_quorum(
+    ctx: &mut CoordinatorContext,
+    coord_collection: &str,
+    min_peers: usize,
+) -> Result<(), Box<dyn Error>> {
+
+    init_coord_collection(ctx, coord_collection)?;
+    init_heartbeat_processor(ctx)?;
+    wait_for_peer_state(ctx.hb_processor.as_ref().unwrap(), PeerState::Init, min_peers)
 }
 
 fn wait_for_peer_state(hbp: &HeartbeatProcessor, state: PeerState, min_peers: usize) -> Result<(), Box<dyn Error>> {
@@ -221,6 +239,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         coord_doc_id: None,
         hb_collection: None,
         hb_doc_id: None,
+        hb_processor: None,
+        hb_observer: None,
         peers: Arc::new(Mutex::new(HashSet::new())),
     };
     println!("XXX -> init ditto");
