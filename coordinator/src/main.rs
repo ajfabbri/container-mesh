@@ -132,11 +132,6 @@ fn wait_for_quorum(
 ) -> Result<(), Box<dyn Error>> {
     let store = ctx.ditto.store();
 
-    // Set up presence monitoring so we can tell if peers are connecting
-    let _presence = ctx.ditto.presence().observe(|graph| {
-        println!("XXX -> presence update {}", concise_presence(graph));
-    });
-
     // Populate coord. collection with initial info.
     ctx.coord_collection = Some(store.collection(coord_collection)?);
     // TODO assert collection is empty
