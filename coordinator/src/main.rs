@@ -16,7 +16,7 @@ struct Cli {
     coord_collection: String,
 
     #[arg(long, default_value_t = 1)]
-    min_peers: u32,
+    min_peers: usize,
 
     #[arg(long, default_value_t = 10)]
     min_msg_delay_msec: u32,
@@ -128,8 +128,8 @@ fn update_coord_info(
 fn wait_for_quorum(
     ctx: &mut CoordinatorContext,
     coord_collection: &str,
-    min_peers: u32,
-) -> Result<(), DittoError> {
+    min_peers: usize,
+) -> Result<(), Box<dyn Error>> {
     let store = ctx.ditto.store();
 
     // Set up presence monitoring so we can tell if peers are connecting
@@ -187,26 +187,25 @@ fn wait_for_quorum(
             }
         })
         .unwrap();
+        wait_for_peer_state(&hbp, PeerState::Init, min_peers)
+}
 
-    // Wait for hearteats to populate peers set
+fn wait_for_peer_state(hbp: &HeartbeatProcessor, state: PeerState, min_peers: usize) -> Result<(), Box<dyn Error>> {
     loop {
         println!("XXX -> wait for peers");
         let peers = hbp.peer_set.lock().unwrap();
-        println!("XXX -> have peers lock");
-        let n: u32 = peers.len().try_into().unwrap();
-        if n >= min_peers {
-            println!(
-                "Have {} peers, waiting 5 seconds then attempting to start...",
-                n
-            );
+        // total of n peers, k of which are in desired `state`
+        let n: usize = peers.len();
+        let k = peers.iter().filter(|p| p.state == state).count();
+        println!("XXX -> have {} peers, {} in state {:?}", n, k, state);
+        if k >= min_peers {
             drop(peers);
-            thread::sleep(Duration::from_secs(5));
             break;
+        } else {
+            println!("Waiting for peers (k = {}, n = {}, need {})", k, n, min_peers);
+            let _unused = hbp.added.wait(peers);
         }
-        println!("Waiting for peers (have {} of at least {})", n, min_peers);
-        let _unused = hbp.added.wait(peers).unwrap();
     }
-
     Ok(())
 }
 
