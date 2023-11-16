@@ -1,5 +1,6 @@
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 use std::time::Duration;
 
@@ -16,10 +17,32 @@ pub fn random_peer_id(prefix: Option<&str>) -> PeerId {
     format!("{}{:x}", pre, rand::random::<u64>())
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
+#[serde(tag = "type")]
+pub enum PeerState {
+    Init,
+    Running,
+    Reporting,
+    Shutdown
+}
+
+impl Display for PeerState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            PeerState::Init => "Init",
+            PeerState::Running => "Running",
+            PeerState::Reporting => "Reporting",
+            PeerState::Shutdown => "Shutdown",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Peer {
     pub peer_id: PeerId,
     pub peer_ip_addr: String,
+    pub state: PeerState,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -86,6 +86,9 @@ struct HeartbeatCtx {
     peer_id: PeerId,
     record: Heartbeat,
     doc_id: DocumentId,
+    // Could be an atomic usize w/ test and set as well
+    state: Arc<Mutex<PeerState>>,
+    // TODO fold this into `state`?
     finished: Arc<AtomicBool>,
     hb_collection: Arc<Mutex<Collection>>,
 }
@@ -102,6 +105,7 @@ struct PeerContext {
     #[allow(dead_code)]
     start_time_msec: u64,
     local_ip: String,
+    state: Arc<Mutex<PeerState>>,
 }
 
 // implement new
@@ -110,12 +114,14 @@ impl HeartbeatCtx {
         peer_id: PeerId,
         record: Heartbeat,
         doc_id: DocumentId,
+        state: Arc<Mutex<PeerState>>,
         hb_collection: Arc<Mutex<Collection>>,
     ) -> Self {
         HeartbeatCtx {
             peer_id,
             record,
             doc_id,
+            state,
             finished: Arc::new(AtomicBool::new(false)),
             hb_collection,
         }
@@ -126,6 +132,7 @@ fn heartbeat_send(hctx: &mut HeartbeatCtx) {
     println!("---> heartbeat_send");
     let hbc_lock = hctx.hb_collection.lock().unwrap();
     hctx.record.update_timestamp();
+    hctx.record.sender.state = hctx.state.lock().expect("lock hb ctx state").clone();
     println!("---> heartbeat_send: update");
     hbc_lock
         .find_by_id(hctx.doc_id.clone())
@@ -219,6 +226,7 @@ fn bootstrap_peer<'a>(
     pctx.coord_info = init_info;
     let hb_record = Heartbeat {
         sender: Peer {
+            state: PeerState::Init,
             peer_id: pctx.id.clone(),
             peer_ip_addr: pctx.local_ip.clone(),
         },
@@ -251,7 +259,13 @@ fn bootstrap_peer<'a>(
             break;
         }
     }
-    let hctx = HeartbeatCtx::new(pctx.id.clone(), hb_record, hb_doc_id, hbc);
+    let hctx = HeartbeatCtx::new(
+        pctx.id.clone(),
+        hb_record,
+        hb_doc_id,
+        pctx.state.clone(),
+        hbc,
+    );
     heartbeat_start(hctx.clone())?;
 
     // wait for execution plan
@@ -292,7 +306,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         hb_collection: None,
         hb_subscription: None,
         start_time_msec: system_time_msec(),
-        local_ip: resolve_local_ip(cli.bind_addr.clone())
+        local_ip: resolve_local_ip(cli.bind_addr.clone()),
+        state: Arc::new(Mutex::new(PeerState::Init)),
     };
     println!("Args {:?}", cli);
     bootstrap_peer(&mut pctx, &cli)?;
