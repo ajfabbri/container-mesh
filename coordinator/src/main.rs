@@ -1,6 +1,7 @@
 use clap::Parser;
 use common::default::*;
 use common::types::*;
+use common::types::PeerState::*;
 use common::util::*;
 use dittolive_ditto::error::DittoError;
 use dittolive_ditto::prelude::*;
@@ -200,17 +201,21 @@ fn wait_for_quorum(
 
     init_coord_collection(ctx, coord_collection)?;
     init_heartbeat_processor(ctx)?;
-    wait_for_peer_state(ctx.hb_processor.as_ref().unwrap(), PeerState::Init, min_peers)
+    wait_for_peer_state(ctx.hb_processor.as_ref().unwrap(), Init, min_peers)
 }
 
 fn wait_for_peer_state(hbp: &HeartbeatProcessor, state: PeerState, min_peers: usize) -> Result<(), Box<dyn Error>> {
+    wait_for_peer_states(hbp, vec![state], min_peers)
+}
+
+fn wait_for_peer_states(hbp: &HeartbeatProcessor, states: Vec<PeerState>, min_peers: usize) -> Result<(), Box<dyn Error>> {
     loop {
         println!("XXX -> wait for peers");
         let peers = hbp.peer_set.lock().unwrap();
         // total of n peers, k of which are in desired `state`
         let n: usize = peers.len();
-        let k = peers.iter().filter(|p| p.state == state).count();
-        println!("XXX -> have {} peers, {} in state {:?}", n, k, state);
+        let k = peers.iter().filter(|p| states.contains(&p.state)).count();
+        println!("XXX -> have {} peers, {} in state(s) {:?}", n, k, states);
         if k >= min_peers {
             drop(peers);
             break;
@@ -253,5 +258,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("XXX -> got quorum, writing test plan..");
     let plan = generate_plan(&ctx);
     update_coord_info(ctx.coord_collection.as_ref().unwrap(), Some(plan))?;
+
+    println!("XXX -> waiting for peers to start Running..");
+    wait_for_peer_state(ctx.hb_processor.as_ref().unwrap(), Running, cli.min_peers)?;
+
+    println!("XXX --> waiting for peers to finish running..");
+    wait_for_peer_states(ctx.hb_processor.as_ref().unwrap(), vec![Reporting, Shutdown], cli.min_peers)?;
+
     Ok(())
 }
