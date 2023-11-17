@@ -8,6 +8,7 @@ use std::error::Error;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::thread::JoinHandle;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -90,7 +91,8 @@ struct HeartbeatCtx {
     state: Arc<Mutex<PeerState>>,
     // TODO fold this into `state`?
     finished: Arc<AtomicBool>,
-    hb_collection: Arc<Mutex<Collection>>,
+    collection: Arc<Mutex<Collection>>,
+    subscription: Arc<Subscription>,
 }
 
 struct PeerContext {
@@ -100,8 +102,8 @@ struct PeerContext {
     coord_info: Option<CoordinatorInfo>,
     #[allow(dead_code)]
     hb_doc_id: Option<DocumentId>,
-    hb_collection: Option<Arc<Mutex<Collection>>>,
-    hb_subscription: Option<Subscription>,
+    hb_ctx: Option<HeartbeatCtx>,
+    hb_thread: Option<JoinHandle<Result<(),std::io::Error>>>,
     #[allow(dead_code)]
     start_time_msec: u64,
     local_ip: String,
@@ -115,7 +117,8 @@ impl HeartbeatCtx {
         record: Heartbeat,
         doc_id: DocumentId,
         state: Arc<Mutex<PeerState>>,
-        hb_collection: Arc<Mutex<Collection>>,
+        collection: Arc<Mutex<Collection>>,
+        subscription: Arc<Subscription>,
     ) -> Self {
         HeartbeatCtx {
             peer_id,
@@ -123,14 +126,14 @@ impl HeartbeatCtx {
             doc_id,
             state,
             finished: Arc::new(AtomicBool::new(false)),
-            hb_collection,
+            collection,
+            subscription,
         }
     }
 }
 
 fn heartbeat_send(hctx: &mut HeartbeatCtx) {
-    println!("---> heartbeat_send");
-    let hbc_lock = hctx.hb_collection.lock().unwrap();
+    let hbc_lock = hctx.collection.lock().unwrap();
     hctx.record.update_timestamp();
     hctx.record.sender.state = hctx.state.lock().expect("lock hb ctx state").clone();
     println!("---> heartbeat_send: update");
@@ -148,13 +151,12 @@ fn heartbeat_send(hctx: &mut HeartbeatCtx) {
         .expect("update heartbeat doc");
 }
 
-fn heartbeat_start(hctx: HeartbeatCtx) -> Result<(), std::io::Error> {
+fn heartbeat_start(hctx: HeartbeatCtx) -> JoinHandle<Result<(), std::io::Error>> {
     let t = thread::spawn(move || -> Result<(), std::io::Error> {
         heartbeat_loop(hctx)?;
         Ok(())
     });
-    t.join().unwrap()?;
-    Ok(())
+    t
 }
 
 fn heartbeat_stop(hctx: &HeartbeatCtx) {
@@ -238,12 +240,12 @@ fn bootstrap_peer<'a>(
     let hbc = Arc::new(Mutex::new(_hbc));
     // retry until we get a heartbeat doc
     let hb_doc_id;
+    let mut hb_sub: Option<Subscription> = None;
     loop {
         let hbc_lock = hbc.lock().unwrap();
-        // lazy-init context's heartbeat subscription and collection
-        if pctx.hb_subscription.is_none() {
-            pctx.hb_subscription = Some(hbc_lock.find_all().subscribe());
-            pctx.hb_collection = Some(hbc.clone());
+        // lazy-init subscription
+        if hb_sub.is_none() {
+            hb_sub = Some(hbc_lock.find_all().subscribe());
         }
         let r = hbc_lock
             .find_all()
@@ -264,11 +266,14 @@ fn bootstrap_peer<'a>(
         hb_record,
         hb_doc_id,
         pctx.state.clone(),
-        hbc,
+        hbc.clone(),
+        Arc::new(hb_sub.unwrap()),
     );
-    heartbeat_start(hctx.clone())?;
+    pctx.hb_thread = Some(heartbeat_start(hctx.clone()));
+    pctx.hb_ctx = Some(hctx);
 
     // wait for execution plan
+    println!("---> Waiting for execution plan..");
     loop {
         // XXX subscribe w/ callback instead of polling
         let doc_result = coord_coll
@@ -291,7 +296,7 @@ fn bootstrap_peer<'a>(
     println!("Got execution plan {:?}", pctx.coord_info);
 
     // TODO pass in and stop at end of execution
-    heartbeat_stop(&hctx);
+    heartbeat_stop(pctx.hb_ctx.as_ref().unwrap());
     todo!()
 }
 
@@ -303,8 +308,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         ditto: make_ditto(&cli.device_name)?,
         coord_info: None,
         hb_doc_id: None,
-        hb_collection: None,
-        hb_subscription: None,
+        hb_ctx: None,
+        hb_thread: None,
         start_time_msec: system_time_msec(),
         local_ip: resolve_local_ip(cli.bind_addr.clone()),
         state: Arc::new(Mutex::new(PeerState::Init)),
