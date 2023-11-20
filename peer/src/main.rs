@@ -7,6 +7,7 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use std::thread;
 use std::thread::JoinHandle;
 
@@ -61,12 +62,13 @@ fn make_ditto(device_name: &str) -> Result<Ditto, DittoError> {
     Ok(ditto)
 }
 
-fn init_transport(pctx: &PeerContext, cli: &Cli) -> Result<(), Box<dyn Error>> {
+fn init_transport(pctx: &mut PeerContext, cli: &Cli) -> Result<(), Box<dyn Error>> {
     let mut config = TransportConfig::default();
     config.peer_to_peer.lan.enabled = true;
     // fail fast
     let _ip_addr: std::net::IpAddr = cli.coord_addr.parse()?;
-    config.connect.tcp_servers = HashSet::from([format!("{}:{}", cli.coord_addr, cli.coord_port)]);
+    let coord_addr = format!("{}:{}", cli.coord_addr, cli.coord_port);
+    config.connect.tcp_servers = HashSet::from([coord_addr.clone()]);
     config.connect.websocket_urls = HashSet::new();
     config.listen.tcp.enabled = true;
     config.listen.tcp.interface_ip = pctx.local_ip.clone();
@@ -78,7 +80,9 @@ fn init_transport(pctx: &PeerContext, cli: &Cli) -> Result<(), Box<dyn Error>> {
         config.listen.tcp.interface_ip, config.listen.tcp.port
     );
     println!("XXX --> config: {:?}", config);
-    pctx.ditto.set_transport_config(config);
+    pctx.ditto.set_transport_config(config.clone());
+    pctx.transport_config = Some(config);
+    pctx.coord_addr = Some(coord_addr.clone());
     Ok(())
 }
 
@@ -98,8 +102,11 @@ struct HeartbeatCtx {
 struct PeerContext {
     id: PeerId,
     ditto: Ditto,
+    coord_addr: Option<String>,
     coord_doc_id: Option<DocumentId>,
     coord_info: Option<CoordinatorInfo>,
+    // Keep a copy of our last transport config so we can modify and re-set it.
+    transport_config: Option<TransportConfig>,
     #[allow(dead_code)]
     hb_doc_id: Option<DocumentId>,
     hb_ctx: Option<HeartbeatCtx>,
@@ -177,14 +184,14 @@ fn heartbeat_loop(mut hctx: HeartbeatCtx) -> Result<(), std::io::Error> {
 fn bootstrap_peer<'a>(
     pctx: &'a mut PeerContext,
     cli: &Cli,
-) -> Result<ExecutionPlan, Box<dyn Error>> {
+) -> Result<(), Box<dyn Error>> {
     // subscribe to coordinator collection
     println!(
         "--> Subscribing to coordinator collection {}..",
         cli.coord_collection
     );
     println!("-> init ditto");
-    init_transport(&pctx, &cli)?;
+    init_transport(pctx, &cli)?;
     pctx.ditto.set_license_from_env("DITTO_LICENSE")?;
     pctx.ditto.start_sync().expect("start_sync");
 
@@ -294,19 +301,68 @@ fn bootstrap_peer<'a>(
     }
 
     println!("Got execution plan {:?}", pctx.coord_info);
+    Ok(())
+}
 
-    // TODO pass in and stop at end of execution
-    heartbeat_stop(pctx.hb_ctx.as_ref().unwrap());
-    todo!()
+fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
+    // connect to all other peers in coord_info
+    let mut all_peers = pctx.transport_config.as_ref().unwrap().connect.tcp_servers.clone();
+    let peers = &pctx.coord_info.as_ref().unwrap().execution_plan.as_ref().unwrap().peers;
+    for peer in peers {
+        if peer.peer_id == pctx.id {
+            continue;
+        }
+        println!("--> Adding connection to peer {}", peer.peer_ip_addr);
+        all_peers.insert(peer.peer_ip_addr.clone());
+    }
+    let mut new_config = pctx.transport_config.as_ref().unwrap().clone();
+    new_config.connect.tcp_servers = all_peers;
+    pctx.ditto.set_transport_config(pctx.transport_config.as_ref().unwrap().clone());
+    Ok(())
+}
+
+fn run_test(pctx: &PeerContext) -> Result<PeerReport, Box<dyn Error>> {
+    // connect to all other peers in coord_info
+    connect_mesh(pctx)?;
+
+    // set up message processor that processes changes to peer collection
+
+    // wait for start time
+    let start_time = pctx.coord_info.as_ref().unwrap().execution_plan.as_ref().unwrap().start_time;
+    let now = system_time_msec();
+    let wait_time = start_time - now;
+    println!("--> Waiting {} msec for start time", wait_time);
+    std::thread::sleep(std::time::Duration::from_millis(wait_time as u64));
+
+    // send messages at desired rates
+    let _stats = LatencyStats {
+        num_events: 0,
+        min_latency_usec: 0,
+        max_latency_usec: 0,
+        avg_latency_usec: 0,
+    };
+    let report = PeerReport {
+        resync_latency: _stats.clone(),
+        message_latency: _stats.clone(),
+        db_availability: AvailabilityStats {
+            start_time_usec: 0,
+            end_time_usec: 0,
+            down_time: Duration::from_secs(0),
+        }
+    };
+
+    Ok(report)
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     let mut pctx = PeerContext {
         id: random_peer_id(Some(&cli.device_name)),
-        coord_doc_id: None,
         ditto: make_ditto(&cli.device_name)?,
+        coord_addr: None,
+        coord_doc_id: None,
         coord_info: None,
+        transport_config: None,
         hb_doc_id: None,
         hb_ctx: None,
         hb_thread: None,
