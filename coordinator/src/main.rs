@@ -1,11 +1,11 @@
 use clap::Parser;
 use common::default::*;
-use common::types::*;
 use common::types::PeerState::*;
+use common::types::*;
 use common::util::*;
 use dittolive_ditto::error::DittoError;
 use dittolive_ditto::prelude::*;
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
@@ -184,30 +184,32 @@ fn init_heartbeat_processor(ctx: &mut CoordinatorContext) -> Result<(), Box<dyn 
         subscription: _hb_sub,
     });
     ctx.hb_processor = Some(cb.clone());
-    ctx.hb_observer = Some(hb_query
-        .observe_local(move |doc: Option<BoxedDocument>, event| {
-            println!("XXX -> observe_local event {:?}", event);
-            if doc.is_none() {
-                return;
-            }
-            let r = doc.as_ref().unwrap().typed::<HeartbeatsDoc>();
-            match r {
-                Ok(hb) => {
-                    println!("OK received heartbeat:");
-                    //let p = doc.unwrap().to_cbor().unwrap();
-                    //print_cdoc(&p).unwrap();
-                    cb.process_heartbeat(hb);
+    ctx.hb_observer = Some(
+        hb_query
+            .observe_local(move |doc: Option<BoxedDocument>, event| {
+                println!("XXX -> observe_local event {:?}", event);
+                if doc.is_none() {
+                    return;
                 }
-                Err(e) => {
-                    println!("Heartbeat deser Error {:?}", e);
-                    let p = doc.unwrap().to_cbor().unwrap();
-                    println!("received heartbeat:");
-                    print_cdoc(&p).unwrap();
+                let r = doc.as_ref().unwrap().typed::<HeartbeatsDoc>();
+                match r {
+                    Ok(hb) => {
+                        println!("OK received heartbeat:");
+                        //let p = doc.unwrap().to_cbor().unwrap();
+                        //print_cdoc(&p).unwrap();
+                        cb.process_heartbeat(hb);
+                    }
+                    Err(e) => {
+                        println!("Heartbeat deser Error {:?}", e);
+                        let p = doc.unwrap().to_cbor().unwrap();
+                        println!("received heartbeat:");
+                        print_cdoc(&p).unwrap();
+                    }
                 }
-            }
-        })
-        .unwrap());
-        Ok(())
+            })
+            .unwrap(),
+    );
+    Ok(())
 }
 
 fn wait_for_quorum(
@@ -215,17 +217,24 @@ fn wait_for_quorum(
     coord_collection: &str,
     min_peers: usize,
 ) -> Result<(), Box<dyn Error>> {
-
     init_coord_collection(ctx, coord_collection)?;
     init_heartbeat_processor(ctx)?;
     wait_for_peer_state(ctx.hb_processor.as_ref().unwrap(), Init, min_peers)
 }
 
-fn wait_for_peer_state(hbp: &HeartbeatProcessor, state: PeerState, min_peers: usize) -> Result<(), Box<dyn Error>> {
+fn wait_for_peer_state(
+    hbp: &HeartbeatProcessor,
+    state: PeerState,
+    min_peers: usize,
+) -> Result<(), Box<dyn Error>> {
     wait_for_peer_states(hbp, vec![state], min_peers)
 }
 
-fn wait_for_peer_states(hbp: &HeartbeatProcessor, states: Vec<PeerState>, min_peers: usize) -> Result<(), Box<dyn Error>> {
+fn wait_for_peer_states(
+    hbp: &HeartbeatProcessor,
+    states: Vec<PeerState>,
+    min_peers: usize,
+) -> Result<(), Box<dyn Error>> {
     loop {
         println!("XXX -> wait for peers");
         let peers = hbp.peer_set.lock().unwrap();
@@ -237,7 +246,10 @@ fn wait_for_peer_states(hbp: &HeartbeatProcessor, states: Vec<PeerState>, min_pe
             drop(peers);
             break;
         } else {
-            println!("Waiting for peers (k = {}, n = {}, need {})", k, n, min_peers);
+            println!(
+                "Waiting for peers (k = {}, n = {}, need {})",
+                k, n, min_peers
+            );
             let _unused = hbp.added.wait(peers);
         }
     }
@@ -274,13 +286,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     wait_for_quorum(&mut ctx, &cli.coord_collection, cli.min_peers)?;
     println!("XXX -> got quorum, writing test plan..");
     let plan = generate_plan(&ctx);
-    update_coord_info(ctx.coord_collection.as_ref().unwrap(), Some(plan))?;
+    set_coord_info_plan(
+        ctx.coord_collection.as_ref().unwrap(),
+        ctx.coord_doc_id.unwrap(),
+        plan,
+    )?;
 
     println!("XXX -> waiting for peers to start Running..");
     wait_for_peer_state(ctx.hb_processor.as_ref().unwrap(), Running, cli.min_peers)?;
 
     println!("XXX --> waiting for peers to finish running..");
-    wait_for_peer_states(ctx.hb_processor.as_ref().unwrap(), vec![Reporting, Shutdown], cli.min_peers)?;
+    wait_for_peer_states(
+        ctx.hb_processor.as_ref().unwrap(),
+        vec![Reporting, Shutdown],
+        cli.min_peers,
+    )?;
 
     Ok(())
 }
