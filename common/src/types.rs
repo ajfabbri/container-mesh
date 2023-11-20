@@ -79,7 +79,7 @@ pub struct CoordinatorInfo {
     pub execution_plan: Option<ExecutionPlan>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ExecutionPlan {
     pub start_time: u64,
     pub test_duration_sec: u32,

@@ -120,24 +120,40 @@ impl HeartbeatProcessor {
     }
 }
 
-fn update_coord_info(
+fn upsert_coord_info(
     cc: &Collection,
     plan: Option<ExecutionPlan>,
 ) -> Result<DocumentId, DittoError> {
-    println!("XXX -> update_coord_info for {:?}", cc.name());
-    // Upsert is ok since this is infrequently updated
     let mut ci = CoordinatorInfo::default();
     ci.execution_plan = plan;
     cc.upsert(ci)
 }
 
-fn init_coord_collection(ctx: &mut CoordinatorContext, coord_collection: &str) -> Result<(), Box<dyn Error>> {
+fn set_coord_info_plan(
+    cc: &Collection,
+    cid: DocumentId,
+    plan: ExecutionPlan,
+) -> Result<(), DittoError> {
+    println!("XXX -> update_coord_info for {:?}", cc.name());
+    let _res = cc.find_by_id(cid).update(|mut_doc| {
+        let mut_doc = mut_doc.unwrap();
+        mut_doc
+            .set("execution_plan", plan.clone())
+            .expect("set execution_plan");
+    })?;
+    Ok(())
+}
+
+fn init_coord_collection(
+    ctx: &mut CoordinatorContext,
+    coord_collection: &str,
+) -> Result<(), Box<dyn Error>> {
     let store = ctx.ditto.store();
 
     // Populate coord. collection with initial info.
     ctx.coord_collection = Some(store.collection(coord_collection)?);
     // TODO assert collection is empty
-    ctx.coord_doc_id = Some(update_coord_info(
+    ctx.coord_doc_id = Some(upsert_coord_info(
         ctx.coord_collection.as_ref().unwrap(),
         None,
     )?);
@@ -148,13 +164,14 @@ fn init_coord_collection(ctx: &mut CoordinatorContext, coord_collection: &str) -
     Ok(())
 }
 
-fn init_heartbeat_processor(ctx: &mut CoordinatorContext) -> Result<(), Box<dyn Error>>
-{
+fn init_heartbeat_processor(ctx: &mut CoordinatorContext) -> Result<(), Box<dyn Error>> {
     // Set up heartbeats document and  consumer
     println!("XXX -> create empty heartbeats doc and subscribing");
     let store = ctx.ditto.store();
     let hbc = store.collection(HEARTBEAT_COLLECTION_NAME)?;
-    ctx.hb_doc_id = Some(hbc.upsert(HeartbeatsDoc { beats: HashMap::new() })?);
+    ctx.hb_doc_id = Some(hbc.upsert(HeartbeatsDoc {
+        beats: HashMap::new(),
+    })?);
     ctx.hb_collection = Some(hbc);
 
     println!("XXX -> set up heartbeat consumer");
