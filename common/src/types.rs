@@ -23,7 +23,7 @@ pub enum PeerState {
     Init,
     Running,
     Reporting,
-    Shutdown
+    Shutdown,
 }
 
 impl Display for PeerState {
