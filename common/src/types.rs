@@ -79,7 +79,6 @@ pub struct CoordinatorInfo {
     pub execution_plan: Option<ExecutionPlan>,
 }
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ExecutionPlan {
     pub start_time: u64,
@@ -91,26 +90,26 @@ pub struct ExecutionPlan {
     pub peers: Vec<Peer>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LatencyStats {
     // TODO histogram
-    num_events: u64,
-    min_latency_usec: u64,
-    max_latency_usec: u64,
-    avg_latency_usec: u64,
+    pub num_events: u64,
+    pub min_latency_usec: u64,
+    pub max_latency_usec: u64,
+    pub avg_latency_usec: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AvailabilityStats {
-    start_time_usec: u64,
-    end_time_usec: u64,
-    down_time: Duration,
+    pub start_time_usec: u64,
+    pub end_time_usec: u64,
+    pub down_time: Duration,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PeerExecutionReport {
+pub struct PeerReport {
     // After losing connection, how long until no events are older than max_msg_delay?
-    resync_latency: LatencyStats,
-    message_latency: LatencyStats,
-    db_availability: AvailabilityStats,
+    pub resync_latency: LatencyStats,
+    pub message_latency: LatencyStats,
+    pub db_availability: AvailabilityStats,
 }
