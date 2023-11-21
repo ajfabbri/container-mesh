@@ -7,9 +7,14 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use std::thread;
 use std::thread::JoinHandle;
+use std::time::Duration;
+
+mod producer;
+use producer::*;
+mod consumer;
+use consumer::*;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -99,7 +104,7 @@ struct HeartbeatCtx {
     subscription: Arc<Subscription>,
 }
 
-struct PeerContext {
+pub struct PeerContext {
     id: PeerId,
     ditto: Ditto,
     coord_addr: Option<String>,
@@ -110,11 +115,27 @@ struct PeerContext {
     #[allow(dead_code)]
     hb_doc_id: Option<DocumentId>,
     hb_ctx: Option<HeartbeatCtx>,
-    hb_thread: Option<JoinHandle<Result<(),std::io::Error>>>,
+    hb_thread: Option<JoinHandle<Result<(), std::io::Error>>>,
     #[allow(dead_code)]
     start_time_msec: u64,
     local_ip: String,
     state: Arc<Mutex<PeerState>>,
+    peer_collection: Option<Arc<Mutex<Collection>>>,
+    peer_observer: Option<LiveQuery>,
+}
+
+impl PeerContext {
+    pub fn state_transition(
+        &mut self,
+        existing: Option<PeerState>,
+        new: PeerState,
+    ) -> Result<(), Box<dyn Error>> {
+        let mut state = self.state.lock().unwrap();
+        assert!(existing.is_none() || existing.unwrap() == *state);
+        println!("--> state_transition: {:?} -> {:?}", self.state, new);
+        *state = new;
+        Ok(())
+    }
 }
 
 // implement new
@@ -181,10 +202,7 @@ fn heartbeat_loop(mut hctx: HeartbeatCtx) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn bootstrap_peer<'a>(
-    pctx: &'a mut PeerContext,
-    cli: &Cli,
-) -> Result<(), Box<dyn Error>> {
+fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dyn Error>> {
     // subscribe to coordinator collection
     println!(
         "--> Subscribing to coordinator collection {}..",
@@ -292,6 +310,7 @@ fn bootstrap_peer<'a>(
         }
         if let Ok(bd) = doc_result {
             let coord_info = bd.typed::<CoordinatorInfo>()?;
+            println!("---> Got CoordinatorInfo: {:?}", coord_info);
             pctx.coord_info = Some(coord_info);
             if pctx.coord_info.as_ref().unwrap().execution_plan.is_some() {
                 break;
@@ -306,8 +325,21 @@ fn bootstrap_peer<'a>(
 
 fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
     // connect to all other peers in coord_info
-    let mut all_peers = pctx.transport_config.as_ref().unwrap().connect.tcp_servers.clone();
-    let peers = &pctx.coord_info.as_ref().unwrap().execution_plan.as_ref().unwrap().peers;
+    let mut all_peers = pctx
+        .transport_config
+        .as_ref()
+        .unwrap()
+        .connect
+        .tcp_servers
+        .clone();
+    let peers = &pctx
+        .coord_info
+        .as_ref()
+        .unwrap()
+        .execution_plan
+        .as_ref()
+        .unwrap()
+        .peers;
     for peer in peers {
         if peer.peer_id == pctx.id {
             continue;
@@ -317,26 +349,61 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
     }
     let mut new_config = pctx.transport_config.as_ref().unwrap().clone();
     new_config.connect.tcp_servers = all_peers;
-    pctx.ditto.set_transport_config(pctx.transport_config.as_ref().unwrap().clone());
+    pctx.ditto
+        .set_transport_config(pctx.transport_config.as_ref().unwrap().clone());
     Ok(())
 }
 
-fn run_test(pctx: &PeerContext) -> Result<PeerReport, Box<dyn Error>> {
+
+fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
     // connect to all other peers in coord_info
     connect_mesh(pctx)?;
 
-    // set up message processor that processes changes to peer collection
-
     // wait for start time
-    let start_time = pctx.coord_info.as_ref().unwrap().execution_plan.as_ref().unwrap().start_time;
+    let plan = pctx
+        .coord_info
+        .as_ref()
+        .unwrap()
+        .execution_plan
+        .as_ref()
+        .unwrap()
+        .clone();
+    let start_time = plan.start_time;
     let now = system_time_msec();
     let wait_time = start_time - now;
     println!("--> Waiting {} msec for start time", wait_time);
     std::thread::sleep(std::time::Duration::from_millis(wait_time as u64));
 
-    // send messages at desired rates
+    pctx.state_transition(Some(PeerState::Init), PeerState::Running)?;
+
+    // set up message processor that processes changes to peer collection
+    let cc = consumer_create_collection(pctx)?;
+    pctx.peer_collection = Some(Arc::new(Mutex::new(cc)));
+    pctx.peer_observer = Some(consumer_start(pctx)?);
+
+    // Send messages at desired rates
+    let producer = ProducerCtx::new(
+        pctx.id.clone(),
+        pctx.peer_collection.as_ref().unwrap().clone(),
+        plan.clone(),
+    );
+
+    let _pthread = producer_start(producer.clone());
+
+    // wait for test duration
+    println!(
+        "--> Waiting {} sec for test duration",
+        plan.test_duration_sec
+    );
+    thread::sleep(Duration::from_secs(plan.test_duration_sec as u64));
+    println!("--> Shutting down producer..");
+    producer_stop(&producer);
+
+    let msg_count = _pthread.join().unwrap().unwrap();
+
+    // Send test report
     let _stats = LatencyStats {
-        num_events: 0,
+        num_events: msg_count,
         min_latency_usec: 0,
         max_latency_usec: 0,
         avg_latency_usec: 0,
@@ -348,9 +415,8 @@ fn run_test(pctx: &PeerContext) -> Result<PeerReport, Box<dyn Error>> {
             start_time_usec: 0,
             end_time_usec: 0,
             down_time: Duration::from_secs(0),
-        }
+        },
     };
-
     Ok(report)
 }
 
@@ -369,8 +435,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         start_time_msec: system_time_msec(),
         local_ip: resolve_local_ip(cli.bind_addr.clone()),
         state: Arc::new(Mutex::new(PeerState::Init)),
+        peer_collection: None,
+        peer_observer: None,
     };
     println!("Args {:?}", cli);
     bootstrap_peer(&mut pctx, &cli)?;
+
+    println!("--> Running test plan..");
+    let report = run_test(&mut pctx)?;
+    println!("--> Test report: {:?}", report);
+
+    // shutdown
+    heartbeat_stop(pctx.hb_ctx.as_ref().unwrap());
+
     Ok(())
 }
