@@ -1,3 +1,4 @@
+use dittolive_ditto::prelude::DocumentId;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -38,7 +39,7 @@ impl Display for PeerState {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Peer {
     pub peer_id: PeerId,
     pub peer_ip_addr: String,
@@ -49,6 +50,19 @@ pub struct Peer {
 pub struct Heartbeat {
     pub sender: Peer,
     pub sent_at_msec: u64,
+}
+
+impl PartialEq for Peer {
+    fn eq(&self, other: &Self) -> bool {
+        self.peer_id == other.peer_id
+    }
+}
+impl Eq for Peer {}
+
+impl Hash for Peer {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.peer_id.hash(state);
+    }
 }
 
 // Ignore timestamps when storing in a set
@@ -85,9 +99,22 @@ pub struct ExecutionPlan {
     pub test_duration_sec: u32,
     pub report_collection_name: String,
     pub peer_collection_name: String,
+    pub peer_doc_id: DocumentId,
     pub min_msg_delay_msec: u32,
     pub max_msg_delay_msec: u32,
     pub peers: Vec<Peer>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PeerRecord {
+    pub timestamp: u64,
+    pub data: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PeerDoc {
+    pub _id: DocumentId,
+    pub logs: HashMap<PeerId, HashMap<String, PeerRecord>>
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

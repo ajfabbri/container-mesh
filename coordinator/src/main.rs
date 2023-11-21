@@ -98,7 +98,6 @@ fn init_transport(ctx: &mut CoordinatorContext, cli: &Cli) -> Result<(), Box<dyn
     Ok(())
 }
 
-// XXX TODO just use a tuple?
 struct HeartbeatProcessor {
     peer_set: Arc<Mutex<HashSet<Peer>>>,
     added: Condvar,
@@ -258,7 +257,7 @@ fn wait_for_peer_states(
 
 fn generate_plan(_ctx: &CoordinatorContext) -> ExecutionPlan {
     let mut plan = ExecutionPlan::default();
-    plan.test_duration_sec = 60;
+    plan.test_duration_sec = 10;
     plan
 }
 
