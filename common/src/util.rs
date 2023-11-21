@@ -51,12 +51,12 @@ pub fn print_cdoc(cbor: &serde_cbor::Value) -> Result<(), io::Error> {
 }
 
 pub fn resolve_local_ip(config_addr: Option<String>) -> String {
-    let default_if_addr = local_ip().unwrap().to_string();
+    let default_if_addr = local_ip().unwrap();
     println!(
         "==> Local IP address: {}, config: {:?}",
         default_if_addr, config_addr
     );
-    config_addr.unwrap_or(default_if_addr)
+    config_addr.unwrap_or(default_if_addr.to_string())
 }
 
 #[allow(dead_code)]

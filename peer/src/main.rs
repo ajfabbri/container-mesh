@@ -15,6 +15,8 @@ mod producer;
 use producer::*;
 mod consumer;
 use consumer::*;
+mod context;
+use context::*;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -92,7 +94,7 @@ fn init_transport(pctx: &mut PeerContext, cli: &Cli) -> Result<(), Box<dyn Error
 }
 
 #[derive(Clone)]
-struct HeartbeatCtx {
+pub struct HeartbeatCtx {
     peer_id: PeerId,
     record: Heartbeat,
     doc_id: DocumentId,
@@ -104,43 +106,9 @@ struct HeartbeatCtx {
     subscription: Arc<Subscription>,
 }
 
-pub struct PeerContext {
-    id: PeerId,
-    ditto: Ditto,
-    coord_addr: Option<String>,
-    coord_doc_id: Option<DocumentId>,
-    coord_info: Option<CoordinatorInfo>,
-    // Keep a copy of our last transport config so we can modify and re-set it.
-    transport_config: Option<TransportConfig>,
-    #[allow(dead_code)]
-    hb_doc_id: Option<DocumentId>,
-    hb_ctx: Option<HeartbeatCtx>,
-    hb_thread: Option<JoinHandle<Result<(), std::io::Error>>>,
-    #[allow(dead_code)]
-    start_time_msec: u64,
-    local_ip: String,
-    state: Arc<Mutex<PeerState>>,
-    peer_collection: Option<Arc<Mutex<Collection>>>,
-    peer_observer: Option<LiveQuery>,
-}
-
-impl PeerContext {
-    pub fn state_transition(
-        &mut self,
-        existing: Option<PeerState>,
-        new: PeerState,
-    ) -> Result<(), Box<dyn Error>> {
-        let mut state = self.state.lock().unwrap();
-        assert!(existing.is_none() || existing.unwrap() == *state);
-        println!("--> state_transition: {:?} -> {:?}", self.state, new);
-        *state = new;
-        Ok(())
-    }
-}
-
 // implement new
 impl HeartbeatCtx {
-    fn new(
+    pub fn new(
         peer_id: PeerId,
         record: Heartbeat,
         doc_id: DocumentId,
@@ -354,7 +322,6 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-
 fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
     // connect to all other peers in coord_info
     connect_mesh(pctx)?;
@@ -422,22 +389,11 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
-    let mut pctx = PeerContext {
-        id: random_peer_id(Some(&cli.device_name)),
-        ditto: make_ditto(&cli.device_name)?,
-        coord_addr: None,
-        coord_doc_id: None,
-        coord_info: None,
-        transport_config: None,
-        hb_doc_id: None,
-        hb_ctx: None,
-        hb_thread: None,
-        start_time_msec: system_time_msec(),
-        local_ip: resolve_local_ip(cli.bind_addr.clone()),
-        state: Arc::new(Mutex::new(PeerState::Init)),
-        peer_collection: None,
-        peer_observer: None,
-    };
+    let mut pctx = PeerContext::new(
+        &cli.device_name,
+        make_ditto(&cli.device_name)?,
+        resolve_local_ip(cli.bind_addr.clone()).as_str(),
+    );
     println!("Args {:?}", cli);
     bootstrap_peer(&mut pctx, &cli)?;
 
