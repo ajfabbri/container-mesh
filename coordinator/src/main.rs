@@ -5,11 +5,10 @@ use common::types::*;
 use common::util::*;
 use dittolive_ditto::error::DittoError;
 use dittolive_ditto::prelude::*;
+use log::*;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Condvar, Mutex};
-use std::thread;
-use std::time::Duration;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -49,7 +48,7 @@ struct CoordinatorContext {
 }
 
 fn make_ditto() -> Result<Ditto, DittoError> {
-    println!("XXX -> make_ditto");
+    debug!("-> make_ditto");
     let make_id = |ditto_root| {
         let app_id = AppId::from_env("DITTO_APP_ID")?;
         identity::OfflinePlayground::new(ditto_root, app_id)
@@ -65,7 +64,6 @@ fn make_ditto() -> Result<Ditto, DittoError> {
         //)
     };
 
-    println!("XXX -> make_ditto -> builder");
     // Connect to ditto
     let ditto = Ditto::builder()
         .with_temp_dir()
@@ -89,11 +87,11 @@ fn init_transport(ctx: &mut CoordinatorContext, cli: &Cli) -> Result<(), Box<dyn
     config.listen.tcp.enabled = true;
     config.listen.tcp.interface_ip = cli.bind_addr.clone();
     config.listen.tcp.port = cli.bind_port.try_into()?;
-    println!(
-        "XXX -> set transport config {}:{}",
+    debug!(
+        "set transport config {}:{}",
         config.listen.tcp.interface_ip, config.listen.tcp.port
     );
-    println!("XXX --> config: {:?}", config);
+    debug!("-> config: {:?}", config);
     ctx.ditto.set_transport_config(config);
     Ok(())
 }
@@ -108,12 +106,12 @@ struct HeartbeatProcessor {
 
 impl HeartbeatProcessor {
     fn process_heartbeat(&self, hbd: HeartbeatsDoc) {
-        println!("--> process {} peer heartbeats", hbd.beats.len());
+        debug!("--> process {} peer heartbeats", hbd.beats.len());
         for (_peer_id, hb) in hbd.beats {
-            println!("--> got heartbeat {:?}", hb);
+            debug!("--> got heartbeat {:?}", hb);
             let mut peer_set = self.peer_set.lock().unwrap();
             peer_set.insert(hb.sender);
-            println!("--> peer set: {:?}", peer_set);
+            debug!("--> peer set: {:?}", peer_set);
             self.added.notify_all();
         }
     }
@@ -133,7 +131,7 @@ fn set_coord_info_plan(
     cid: DocumentId,
     plan: ExecutionPlan,
 ) -> Result<(), DittoError> {
-    println!("XXX -> update_coord_info for {:?}", cc.name());
+    debug!("-> update_coord_info for {:?}", cc.name());
     let _res = cc.find_by_id(cid).update(|mut_doc| {
         let mut_doc = mut_doc.unwrap();
         mut_doc
@@ -156,8 +154,8 @@ fn init_coord_collection(
         ctx.coord_collection.as_ref().unwrap(),
         None,
     )?);
-    println!(
-        "XXX --> wrote coord info doc id {}",
+    debug!(
+        "-> wrote coord info doc id {}",
         ctx.coord_doc_id.as_ref().unwrap()
     );
     Ok(())
@@ -165,7 +163,7 @@ fn init_coord_collection(
 
 fn init_heartbeat_processor(ctx: &mut CoordinatorContext) -> Result<(), Box<dyn Error>> {
     // Set up heartbeats document and  consumer
-    println!("XXX -> create empty heartbeats doc and subscribing");
+    info!("-> creating empty heartbeats doc and subscribing..");
     let store = ctx.ditto.store();
     let hbc = store.collection(HEARTBEAT_COLLECTION_NAME)?;
     ctx.hb_doc_id = Some(hbc.upsert(HeartbeatsDoc {
@@ -173,7 +171,7 @@ fn init_heartbeat_processor(ctx: &mut CoordinatorContext) -> Result<(), Box<dyn 
     })?);
     ctx.hb_collection = Some(hbc);
 
-    println!("XXX -> set up heartbeat consumer");
+    info!("-> set up heartbeat consumer");
     let hb_coll = ctx.hb_collection.as_ref().unwrap();
     let hb_query = hb_coll.find_by_id(ctx.hb_doc_id.as_ref().unwrap());
     let _hb_sub = hb_query.subscribe();
@@ -186,22 +184,22 @@ fn init_heartbeat_processor(ctx: &mut CoordinatorContext) -> Result<(), Box<dyn 
     ctx.hb_observer = Some(
         hb_query
             .observe_local(move |doc: Option<BoxedDocument>, event| {
-                println!("XXX -> observe_local event {:?}", event);
+                debug!("-> observe_local event {:?}", event);
                 if doc.is_none() {
                     return;
                 }
                 let r = doc.as_ref().unwrap().typed::<HeartbeatsDoc>();
                 match r {
                     Ok(hb) => {
-                        println!("OK received heartbeat:");
+                        debug!("OK received heartbeat:");
                         //let p = doc.unwrap().to_cbor().unwrap();
                         //print_cdoc(&p).unwrap();
                         cb.process_heartbeat(hb);
                     }
                     Err(e) => {
-                        println!("Heartbeat deser Error {:?}", e);
+                        error!("Heartbeat deser Error {:?}", e);
                         let p = doc.unwrap().to_cbor().unwrap();
-                        println!("received heartbeat:");
+                        info!("received heartbeat:");
                         print_cdoc(&p).unwrap();
                     }
                 }
@@ -235,17 +233,20 @@ fn wait_for_peer_states(
     min_peers: usize,
 ) -> Result<(), Box<dyn Error>> {
     loop {
-        println!("XXX -> wait for peers");
+        info!(
+            "-> wait for {} peers to reach a state in {:?}",
+            min_peers, states
+        );
         let peers = hbp.peer_set.lock().unwrap();
         // total of n peers, k of which are in desired `state`
         let n: usize = peers.len();
         let k = peers.iter().filter(|p| states.contains(&p.state)).count();
-        println!("XXX -> have {} peers, {} in state(s) {:?}", n, k, states);
+        debug!("-> have {} peers, {} in state(s) {:?}", n, k, states);
         if k >= min_peers {
             drop(peers);
             break;
         } else {
-            println!(
+            debug!(
                 "Waiting for peers (k = {}, n = {}, need {})",
                 k, n, min_peers
             );
@@ -263,7 +264,7 @@ fn generate_plan(_ctx: &CoordinatorContext) -> ExecutionPlan {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
-    println!("Args {:?}", cli);
+    debug!("Args {:?}", cli);
     let mut ctx = CoordinatorContext {
         ditto: make_ditto()?,
         plan: None,
@@ -276,14 +277,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         hb_observer: None,
         peers: Arc::new(Mutex::new(HashSet::new())),
     };
-    println!("XXX -> init ditto");
+    debug!("-> init ditto");
     init_transport(&mut ctx, &cli)?;
     ctx.ditto.set_license_from_env("DITTO_LICENSE")?;
     ctx.ditto.start_sync()?;
 
-    println!("XXX -> wait for quorum");
+    debug!("-> wait for quorum");
     wait_for_quorum(&mut ctx, &cli.coord_collection, cli.min_peers)?;
-    println!("XXX -> got quorum, writing test plan..");
+    info!("-> got quorum, writing test plan..");
     let plan = generate_plan(&ctx);
     set_coord_info_plan(
         ctx.coord_collection.as_ref().unwrap(),
@@ -291,10 +292,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         plan,
     )?;
 
-    println!("XXX -> waiting for peers to start Running..");
+    debug!("-> waiting for peers to start Running..");
     wait_for_peer_state(ctx.hb_processor.as_ref().unwrap(), Running, cli.min_peers)?;
 
-    println!("XXX --> waiting for peers to finish running..");
+    debug!("-> waiting for peers to finish running..");
     wait_for_peer_states(
         ctx.hb_processor.as_ref().unwrap(),
         vec![Reporting, Shutdown],

@@ -1,6 +1,7 @@
 use crate::types::Heartbeat;
 use dittolive_ditto::transport::{Peer, PresenceGraph};
 use local_ip_address::{list_afinet_netifas, local_ip};
+use log::info;
 use serde_json;
 use std::io;
 use std::time;
@@ -46,13 +47,12 @@ pub fn concise_presence(pg: &PresenceGraph) -> String {
 
 pub fn print_cdoc(cbor: &serde_cbor::Value) -> Result<(), io::Error> {
     serde_json::to_writer_pretty(std::io::stdout(), cbor)?;
-    println!();
     Ok(())
 }
 
 pub fn resolve_local_ip(config_addr: Option<String>) -> String {
     let default_if_addr = local_ip().unwrap();
-    println!(
+    info!(
         "==> Local IP address: {}, config: {:?}",
         default_if_addr, config_addr
     );
@@ -64,6 +64,6 @@ pub fn show_local_ips() {
     let network_interfaces = list_afinet_netifas().unwrap();
 
     for (name, ip) in network_interfaces.iter() {
-        println!("{}:\t{:?}", name, ip);
+        info!("{}:\t{:?}", name, ip);
     }
 }

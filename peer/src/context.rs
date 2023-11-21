@@ -1,10 +1,14 @@
-use std::{thread::JoinHandle, sync::{Arc, Mutex}, error::Error};
+use log::info;
+use std::{
+    error::Error,
+    sync::{Arc, Mutex},
+    thread::JoinHandle,
+};
 
 use common::{types::*, util::system_time_msec};
 use dittolive_ditto::prelude::*;
 
 use crate::HeartbeatCtx;
-
 
 pub struct PeerContext {
     pub id: PeerId,
@@ -53,7 +57,7 @@ impl PeerContext {
     ) -> Result<(), Box<dyn Error>> {
         let mut state = self.state.lock().unwrap();
         assert!(existing.is_none() || existing.unwrap() == *state);
-        println!("--> state_transition: {:?} -> {:?}", self.state, new);
+        info!("--> state_transition: {:?} -> {:?}", self.state, new);
         *state = new;
         Ok(())
     }

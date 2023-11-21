@@ -3,6 +3,7 @@ use std::thread::{self, JoinHandle};
 
 use common::types::*;
 use dittolive_ditto::prelude::*;
+use log::*;
 
 #[derive(Clone)]
 pub struct ProducerCtx {
@@ -41,11 +42,11 @@ pub fn producer_send(prod_ctx: &mut ProducerCtx) {
         prod_ctx.peer_id.to_string().as_str(),
         prod_ctx.msg_index.to_string().as_str()
     );
-    println!("---> producer_send: update path: {} -> {:?}", rec_path, rec);
+    debug!("---> producer_send: update path: {} -> {:?}", rec_path, rec);
     hbc_lock
         .find_by_id(prod_ctx.plan.peer_doc_id.clone())
         .update(|mut_doc| {
-            println!("---> producer set {} to {:?}", rec_path, rec);
+            debug!("---> producer set {} to {:?}", rec_path, rec);
             let mut_doc = mut_doc.unwrap();
             mut_doc
                 .set(rec_path.as_str(), rec.clone())
@@ -56,13 +57,13 @@ pub fn producer_send(prod_ctx: &mut ProducerCtx) {
 }
 
 pub fn producer_start(prod_ctx: ProducerCtx) -> JoinHandle<Result<u64, std::io::Error>> {
-    println!("--> producer_start");
+    info!("--> producer_start");
     let t = thread::spawn(move || -> Result<u64, std::io::Error> { producer_loop(prod_ctx) });
     t
 }
 
 pub fn producer_stop(prod_ctx: &ProducerCtx) {
-    println!("--> producer_stop");
+    info!("--> producer_stop");
     prod_ctx
         .finished
         .store(true, std::sync::atomic::Ordering::Relaxed);

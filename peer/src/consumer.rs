@@ -1,9 +1,12 @@
-use std::{error::Error, collections::HashMap};
+use log::*;
+use std::{collections::HashMap, error::Error};
 
-use common::{types::{PeerRecord, PeerDoc}, util::print_cdoc};
-use dittolive_ditto::prelude::*;
 use crate::PeerContext;
-
+use common::{
+    types::{PeerDoc, PeerRecord},
+    util::print_cdoc,
+};
+use dittolive_ditto::prelude::*;
 
 struct PeerConsumer {
     // TODO stats
@@ -39,7 +42,7 @@ pub fn consumer_create_collection(pctx: &PeerContext) -> Result<Collection, Box<
 
 impl PeerConsumer {
     fn process_peer(&mut self, _pdoc: PeerDoc) {
-        println!("--> process_peer {:?}", _pdoc);
+        debug!("--> process_peer {:?}", _pdoc);
         self.event_count += 1;
     }
 }
@@ -55,8 +58,8 @@ pub fn consumer_start(pctx: &PeerContext) -> Result<LiveQuery, Box<dyn Error>> {
         .unwrap();
     let peer_doc_id = plan.peer_doc_id.clone();
     let query = coll.as_ref().unwrap().find_by_id(peer_doc_id.clone());
-    println!(
-        "--> XXX consumer_start for coll {} w/ doc id {}",
+    info!(
+        "--> consumer_start for coll {} w/ doc id {}",
         plan.peer_collection_name, peer_doc_id
     );
 
@@ -66,7 +69,7 @@ pub fn consumer_start(pctx: &PeerContext) -> Result<LiveQuery, Box<dyn Error>> {
     };
     let live_query = query
         .observe_local(move |doc: Option<BoxedDocument>, event| {
-            println!("XXX -> observe peer event {:?}", event);
+            debug!("-> observe peer event {:?}", event);
             if doc.is_none() {
                 return;
             }
@@ -78,9 +81,9 @@ pub fn consumer_start(pctx: &PeerContext) -> Result<LiveQuery, Box<dyn Error>> {
                     consumer.process_peer(pdoc);
                 }
                 Err(e) => {
-                    println!("PeerDoc deser Error {:?}", e);
+                    error!("PeerDoc deser Error {:?}", e);
                     let p = doc.unwrap().to_cbor().unwrap();
-                    println!("received peer doc:");
+                    info!("received peer doc:");
                     print_cdoc(&p).unwrap();
                 }
             }

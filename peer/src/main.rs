@@ -3,6 +3,8 @@ use common::types::*;
 use common::util::*;
 use dittolive_ditto::error::DittoError;
 use dittolive_ditto::prelude::*;
+use env_logger;
+use log::*;
 use std::collections::HashSet;
 use std::error::Error;
 use std::sync::atomic::AtomicBool;
@@ -40,7 +42,7 @@ struct Cli {
 }
 
 fn make_ditto(device_name: &str) -> Result<Ditto, DittoError> {
-    println!("-> make_ditto");
+    debug!("-> make_ditto");
     let make_id = |ditto_root| {
         let app_id = AppId::from_env("DITTO_APP_ID")?;
         identity::OfflinePlayground::new(ditto_root, app_id)
@@ -82,11 +84,11 @@ fn init_transport(pctx: &mut PeerContext, cli: &Cli) -> Result<(), Box<dyn Error
     if cli.bind_port.is_some() {
         config.listen.tcp.port = cli.bind_port.unwrap_or(0).try_into()?;
     }
-    println!(
+    info!(
         "-> set transport config {}:{}",
         config.listen.tcp.interface_ip, config.listen.tcp.port
     );
-    println!("XXX --> config: {:?}", config);
+    debug!("-> config: {:?}", config);
     pctx.ditto.set_transport_config(config.clone());
     pctx.transport_config = Some(config);
     pctx.coord_addr = Some(coord_addr.clone());
@@ -132,7 +134,7 @@ fn heartbeat_send(hctx: &mut HeartbeatCtx) {
     let hbc_lock = hctx.collection.lock().unwrap();
     hctx.record.update_timestamp();
     hctx.record.sender.state = hctx.state.lock().expect("lock hb ctx state").clone();
-    println!("---> heartbeat_send: update");
+    debug!("---> heartbeat_send: update");
     hbc_lock
         .find_by_id(hctx.doc_id.clone())
         .update(|mut_doc| {
@@ -172,11 +174,11 @@ fn heartbeat_loop(mut hctx: HeartbeatCtx) -> Result<(), std::io::Error> {
 
 fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dyn Error>> {
     // subscribe to coordinator collection
-    println!(
+    info!(
         "--> Subscribing to coordinator collection {}..",
         cli.coord_collection
     );
-    println!("-> init ditto");
+    debug!("-> init ditto");
     init_transport(pctx, &cli)?;
     pctx.ditto.set_license_from_env("DITTO_LICENSE")?;
     pctx.ditto.start_sync().expect("start_sync");
@@ -190,24 +192,24 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
     // wait until we get an initial CoordinatorInfo
     let init_info;
     loop {
-        println!(
+        debug!(
             "--> Polling for CoordinatorInfo on {:?}...",
             coord_coll.name()
         );
         match coord_coll.find_all().exec() {
-            Err(e) => println!("Error: {:?}", e),
+            Err(e) => error!("Error: {:?}", e),
             Ok(plan) => {
                 let n = plan.len();
                 if n > 0 {
                     if n > 1 {
-                        println!(
+                        warn!(
                             "Warning: multiple coord info. documents (N={}), using the first.",
                             n
                         );
                     }
                     pctx.coord_doc_id = Some(plan[0].id());
                     init_info = Some(plan[0].typed::<CoordinatorInfo>()?);
-                    println!(
+                    debug!(
                         "--> got CoordinatorInfo id {}: {:?}",
                         pctx.coord_doc_id.as_ref().unwrap(),
                         init_info.as_ref().unwrap()
@@ -248,7 +250,7 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
             std::thread::sleep(std::time::Duration::from_secs(2));
         } else {
             if r.len() > 1 {
-                println!("Warning: multiple heartbeat docs, using first.");
+                warn!("Multiple heartbeat docs, using first.");
             }
             hb_doc_id = r[0].id();
             break;
@@ -266,19 +268,19 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
     pctx.hb_ctx = Some(hctx);
 
     // wait for execution plan
-    println!("---> Waiting for execution plan..");
+    info!("--> Waiting for execution plan..");
     loop {
         // XXX subscribe w/ callback instead of polling
         let doc_result = coord_coll
             .find_by_id(pctx.coord_doc_id.as_ref().unwrap())
             .exec();
         if let Err(e) = doc_result {
-            println!("Error finding doc in coord. collection: {:?}", e);
+            warn!("Error finding doc in coord. collection: {:?}", e);
             continue;
         }
         if let Ok(bd) = doc_result {
             let coord_info = bd.typed::<CoordinatorInfo>()?;
-            println!("---> Got CoordinatorInfo: {:?}", coord_info);
+            debug!("---> Got CoordinatorInfo: {:?}", coord_info);
             pctx.coord_info = Some(coord_info);
             if pctx.coord_info.as_ref().unwrap().execution_plan.is_some() {
                 break;
@@ -287,7 +289,7 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
 
-    println!("Got execution plan {:?}", pctx.coord_info);
+    debug!("Got execution plan {:?}", pctx.coord_info);
     Ok(())
 }
 
@@ -312,7 +314,7 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
         if peer.peer_id == pctx.id {
             continue;
         }
-        println!("--> Adding connection to peer {}", peer.peer_ip_addr);
+        info!("--> Adding connection to peer {}", peer.peer_ip_addr);
         all_peers.insert(peer.peer_ip_addr.clone());
     }
     let mut new_config = pctx.transport_config.as_ref().unwrap().clone();
@@ -338,7 +340,7 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
     let start_time = plan.start_time;
     let now = system_time_msec();
     let wait_time = start_time - now;
-    println!("--> Waiting {} msec for start time", wait_time);
+    info!("--> Waiting {} msec for start time", wait_time);
     std::thread::sleep(std::time::Duration::from_millis(wait_time as u64));
 
     pctx.state_transition(Some(PeerState::Init), PeerState::Running)?;
@@ -358,12 +360,12 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
     let _pthread = producer_start(producer.clone());
 
     // wait for test duration
-    println!(
+    info!(
         "--> Waiting {} sec for test duration",
         plan.test_duration_sec
     );
     thread::sleep(Duration::from_secs(plan.test_duration_sec as u64));
-    println!("--> Shutting down producer..");
+    debug!("--> Shutting down producer..");
     producer_stop(&producer);
 
     let msg_count = _pthread.join().unwrap().unwrap();
@@ -389,17 +391,18 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
+    env_logger::init();
     let mut pctx = PeerContext::new(
         &cli.device_name,
         make_ditto(&cli.device_name)?,
         resolve_local_ip(cli.bind_addr.clone()).as_str(),
     );
-    println!("Args {:?}", cli);
+    debug!("Args {:?}", cli);
     bootstrap_peer(&mut pctx, &cli)?;
 
-    println!("--> Running test plan..");
+    info!("--> Running test plan..");
     let report = run_test(&mut pctx)?;
-    println!("--> Test report: {:?}", report);
+    info!("--> Test report: {:?}", report);
 
     // shutdown
     heartbeat_stop(pctx.hb_ctx.as_ref().unwrap());
