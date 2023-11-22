@@ -23,12 +23,12 @@ impl Default for ExecutionPlan {
         let some_id = format!("{:x}", rand::random::<u64>());
         ExecutionPlan {
             start_time: util::system_time_msec() + 5000,
-            test_duration_sec: 10,
+            test_duration_sec: 60,
             report_collection_name: REPORT_COLLECTION_NAME.to_string(),
             peer_collection_name: PEER_COLLECTION_NAME.to_string(),
             peer_doc_id: DocumentId::from(some_id.as_bytes()),
-            min_msg_delay_msec: 100,
-            max_msg_delay_msec: 1000,
+            min_msg_delay_msec: 10,
+            max_msg_delay_msec: 500,
             peers: Vec::new(),
         }
     }
