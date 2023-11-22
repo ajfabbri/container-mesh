@@ -339,7 +339,13 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
         .clone();
     let start_time = plan.start_time;
     let now = system_time_msec();
-    let wait_time = start_time - now;
+    // XXX TODO can underflow
+    let wait_time;
+    if now > start_time {
+        wait_time = 0;
+    } else {
+        wait_time = start_time - now;
+    }
     info!("--> Waiting {} msec for start time", wait_time);
     std::thread::sleep(std::time::Duration::from_millis(wait_time as u64));
 
