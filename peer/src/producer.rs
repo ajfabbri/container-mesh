@@ -4,6 +4,7 @@ use std::thread::{self, JoinHandle};
 use common::types::*;
 use dittolive_ditto::prelude::*;
 use log::*;
+use rand::Rng;
 
 #[derive(Clone)]
 pub struct ProducerCtx {
@@ -76,7 +77,10 @@ pub fn producer_loop(mut prod_ctx: ProducerCtx) -> Result<u64, std::io::Error> {
     while !prod_ctx.finished.load(std::sync::atomic::Ordering::Relaxed) {
         producer_send(&mut prod_ctx);
         count += 1;
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        let mut rng = rand::thread_rng();
+        let msec = rng.gen_range(prod_ctx.plan.min_msg_delay_msec..
+            prod_ctx.plan.max_msg_delay_msec);
+        std::thread::sleep(std::time::Duration::from_millis(msec as u64));
     }
     Ok(count)
 }
