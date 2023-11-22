@@ -3,7 +3,7 @@ use std::{collections::HashMap, error::Error};
 
 use crate::PeerContext;
 use common::{
-    types::{PeerDoc, PeerRecord},
+    types::{PeerDoc, PeerRecord, PeerId},
     util::print_cdoc,
 };
 use dittolive_ditto::prelude::*;
@@ -11,6 +11,7 @@ use dittolive_ditto::prelude::*;
 struct PeerConsumer {
     // TODO stats
     event_count: usize,
+    next_record_by_peer: HashMap<PeerId, usize>,
     // To keep subscription alive as needed
     #[allow(dead_code)]
     subscription: Subscription,
@@ -41,6 +42,14 @@ pub fn consumer_create_collection(pctx: &PeerContext) -> Result<Collection, Box<
 }
 
 impl PeerConsumer {
+    fn new(subscription: Subscription) -> Self {
+        Self {
+            event_count: 0,
+            next_record_by_peer: HashMap::new(),
+            subscription,
+        }
+    }
+
     fn process_peer(&mut self, _pdoc: PeerDoc) {
         debug!("--> process_peer {:?}", _pdoc);
         self.event_count += 1;
@@ -63,10 +72,7 @@ pub fn consumer_start(pctx: &PeerContext) -> Result<LiveQuery, Box<dyn Error>> {
         plan.peer_collection_name, peer_doc_id
     );
 
-    let mut consumer = PeerConsumer {
-        event_count: 0,
-        subscription: query.subscribe(),
-    };
+    let mut consumer = PeerConsumer::new(query.subscribe());
     let live_query = query
         .observe_local(move |doc: Option<BoxedDocument>, event| {
             debug!("-> observe peer event {:?}", event);
