@@ -3,7 +3,7 @@ use common::types::*;
 use common::util::*;
 use dittolive_ditto::error::DittoError;
 use dittolive_ditto::prelude::*;
-use env_logger;
+use env_logger::Env;
 use log::*;
 use std::collections::HashSet;
 use std::error::Error;
@@ -227,7 +227,7 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
             peer_id: pctx.id.clone(),
             peer_ip_addr: pctx.local_ip.clone(),
         },
-        sent_at_msec: 0,
+        sent_at_usec: 0,
     };
 
     // Fetch initial heartbeat doc and start heartbeat timer
@@ -348,7 +348,7 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
     // set up message processor that processes changes to peer collection
     let cc = consumer_create_collection(pctx)?;
     pctx.peer_collection = Some(Arc::new(Mutex::new(cc)));
-    pctx.peer_observer = Some(consumer_start(pctx)?);
+    let _consumer = consumer_start(pctx)?;
 
     // Send messages at desired rates
     let producer = ProducerCtx::new(
@@ -371,27 +371,18 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
     let msg_count = _pthread.join().unwrap().unwrap();
 
     // Send test report
-    let _stats = LatencyStats {
-        num_events: msg_count,
-        min_latency_usec: 0,
-        max_latency_usec: 0,
-        avg_latency_usec: 0,
-    };
+    let consumer = _consumer.lock().unwrap();
+    let _stats = LatencyStats::new();
     let report = PeerReport {
-        resync_latency: _stats.clone(),
-        message_latency: _stats.clone(),
-        db_availability: AvailabilityStats {
-            start_time_usec: 0,
-            end_time_usec: 0,
-            down_time: Duration::from_secs(0),
-        },
+        message_latency: consumer.get_message_latency(),
+        records_produced: msg_count,
     };
     Ok(report)
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
-    env_logger::init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let mut pctx = PeerContext::new(
         &cli.device_name,
         make_ditto(&cli.device_name)?,
