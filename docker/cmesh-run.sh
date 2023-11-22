@@ -85,15 +85,15 @@ fi
 set +x
 pwd
 source .secret.env
-build_args+=" --build-arg ARCH=$ARCH"
-build_args+=" --build-arg DITTO_APP_ID=$DITTO_APP_ID"
-build_args+=" --build-arg DITTO_PG_TOKEN=$DITTO_PG_TOKEN"
-build_args+=" --build-arg DITTO_LICENSE=$DITTO_LICENSE"
+#build_args+=" --build-arg ARCH=$ARCH"
+#build_args+=" --build-arg DITTO_APP_ID=$DITTO_APP_ID"
+#build_args+=" --build-arg DITTO_PG_TOKEN=$DITTO_PG_TOKEN"
+#build_args+=" --build-arg DITTO_LICENSE=$DITTO_LICENSE"
 set -x
-echo $build_args
-stop_coord
-stop_peers
-build_peer "$build_args"
-build_coord "$build_args"
+#echo $build_args
+#stop_coord
+#stop_peers
+#build_peer "$build_args"
+#build_coord "$build_args"
 run_coord
 run_peers $scale
