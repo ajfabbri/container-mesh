@@ -113,5 +113,5 @@ Some TODOs:
           coordinator and get CoordinatorInfo (heartbeat details + optional
           exec. plan)
 
-- Move docker build args to just being runtime container vars where possible.
+- Add the chaos stuff; write tests that use pumba / tc to mess with the network.
 - Use secrets instead of env. vars to pass license / app ID.
