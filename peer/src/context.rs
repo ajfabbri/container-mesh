@@ -9,6 +9,7 @@ use common::{types::*, util::system_time_msec};
 use dittolive_ditto::prelude::*;
 
 use crate::HeartbeatCtx;
+use crate::consumer::PeerConsumer;
 
 pub struct PeerContext {
     pub id: PeerId,
@@ -27,7 +28,7 @@ pub struct PeerContext {
     pub local_ip: String,
     pub state: Arc<Mutex<PeerState>>,
     pub peer_collection: Option<Arc<Mutex<Collection>>>,
-    pub peer_observer: Option<LiveQuery>,
+    pub peer_consumer: Option<PeerConsumer>,
 }
 
 impl PeerContext {
@@ -46,7 +47,7 @@ impl PeerContext {
             local_ip: local_ip.to_string(),
             state: Arc::new(Mutex::new(PeerState::Init)),
             peer_collection: None,
-            peer_observer: None,
+            peer_consumer: None,
         }
     }
 

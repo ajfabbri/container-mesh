@@ -15,9 +15,18 @@ pub fn system_time_msec() -> u64 {
         .unwrap()
 }
 
+pub fn system_time_usec() -> u64 {
+    time::SystemTime::now()
+        .duration_since(time::UNIX_EPOCH)
+        .expect("SystemTime::now")
+        .as_micros()
+        .try_into()
+        .unwrap()
+}
+
 impl Heartbeat {
     pub fn update_timestamp(&mut self) {
-        self.sent_at_msec = system_time_msec();
+        self.sent_at_usec = system_time_usec();
     }
 }
 

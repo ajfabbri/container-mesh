@@ -49,7 +49,7 @@ pub struct Peer {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Heartbeat {
     pub sender: Peer,
-    pub sent_at_msec: u64,
+    pub sent_at_usec: u64,
 }
 
 impl PartialEq for Peer {
@@ -121,9 +121,20 @@ pub struct PeerDoc {
 pub struct LatencyStats {
     // TODO histogram
     pub num_events: u64,
-    pub min_latency_usec: u64,
-    pub max_latency_usec: u64,
-    pub avg_latency_usec: u64,
+    pub min_usec: u64,
+    pub max_usec: u64,
+    pub avg_usec: u64,
+}
+
+impl LatencyStats {
+    pub fn new() -> Self {
+        Self {
+            num_events: 0,
+            min_usec: u64::MAX,
+            max_usec: 0,
+            avg_usec: 0,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -136,7 +147,8 @@ pub struct AvailabilityStats {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PeerReport {
     // After losing connection, how long until no events are older than max_msg_delay?
-    pub resync_latency: LatencyStats,
+    // TODO pub resync_latency: LatencyStats,
     pub message_latency: LatencyStats,
-    pub db_availability: AvailabilityStats,
+    // TODO pub db_availability: AvailabilityStats,
+    pub records_produced: u64,
 }

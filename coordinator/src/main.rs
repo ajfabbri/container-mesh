@@ -5,6 +5,7 @@ use common::types::*;
 use common::util::*;
 use dittolive_ditto::error::DittoError;
 use dittolive_ditto::prelude::*;
+use env_logger::Env;
 use log::*;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -233,7 +234,7 @@ fn wait_for_peer_states(
     min_peers: usize,
 ) -> Result<(), Box<dyn Error>> {
     loop {
-        info!(
+        debug!(
             "-> wait for {} peers to reach a state in {:?}",
             min_peers, states
         );
@@ -264,6 +265,8 @@ fn generate_plan(_ctx: &CoordinatorContext) -> ExecutionPlan {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
+
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     debug!("Args {:?}", cli);
     let mut ctx = CoordinatorContext {
         ditto: make_ditto()?,
@@ -282,7 +285,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     ctx.ditto.set_license_from_env("DITTO_LICENSE")?;
     ctx.ditto.start_sync()?;
 
-    debug!("-> wait for quorum");
+    info!("-> wait for quorum");
     wait_for_quorum(&mut ctx, &cli.coord_collection, cli.min_peers)?;
     info!("-> got quorum, writing test plan..");
     let plan = generate_plan(&ctx);
@@ -292,10 +295,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         plan,
     )?;
 
-    debug!("-> waiting for peers to start Running..");
+    info!("-> waiting for peers to start Running..");
     wait_for_peer_state(ctx.hb_processor.as_ref().unwrap(), Running, cli.min_peers)?;
 
-    debug!("-> waiting for peers to finish running..");
+    info!("-> waiting for peers to finish running..");
     wait_for_peer_states(
         ctx.hb_processor.as_ref().unwrap(),
         vec![Reporting, Shutdown],
