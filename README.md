@@ -16,13 +16,19 @@ high mobility, and other failure conditions.
 Tested with `DITTO_TARGET=x86_64-unknown-linux-gnu`
 
 *Debug*
+
 `cargo build --target $DITTO_TARGET`
+
 `docker compose build --build-arg "FLAVOR=debug"`
+
 `docker compose up`
 
 *Release*
+
 `cargo build --target $DITTO_TARGET --release`
-`docker compose build --build-arg"`
+
+`docker compose build`
+
 `docker compose up`
 
 

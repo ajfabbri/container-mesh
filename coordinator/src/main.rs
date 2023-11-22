@@ -259,7 +259,6 @@ fn wait_for_peer_states(
 
 fn generate_plan(_ctx: &CoordinatorContext) -> ExecutionPlan {
     let mut plan = ExecutionPlan::default();
-    plan.test_duration_sec = 10;
     plan
 }
 

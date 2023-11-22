@@ -370,7 +370,7 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
 
     let msg_count = _pthread.join().unwrap().unwrap();
 
-    // Send test report
+    // Return test report
     let consumer = _consumer.lock().unwrap();
     let _stats = LatencyStats::new();
     let report = PeerReport {
