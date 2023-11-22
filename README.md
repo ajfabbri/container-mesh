@@ -102,16 +102,21 @@ Start of with some simplifying assumptions:
 
 Some TODOs:
 
-- Write small peer test app.
-    - Main node logic for test.
-    - At random interval in (0.01, 0.99] seconds, write a message to peer's
-      event object containing:
-      - Timestamp, node_id
-      - Later/nice to have: network utilization / node stats
-    - Peer-to-peer bootstrapping
-        - Use well-known IP and "coordinator collection" to connect to
+- Small peer test app (agents).
+
+    - [x] Basic operation with latency reports in peer logs
+
+    - [x] Peer-to-peer bootstrapping
+
+       - [x] Use well-known IP and "coordinator collection" to connect to
           coordinator and get CoordinatorInfo (heartbeat details + optional
           exec. plan)
 
-- Add the chaos stuff; write tests that use pumba / tc to mess with the network.
-- Use secrets instead of env. vars to pass license / app ID.
+    - [ ] calculate resync latency (bound on time to get full set of updates for
+        some epoch) 
+
+- [ ] fix [cmesh-run.sh](docker/cmesh-run.sh) to allow spinning up huge sets of peers
+
+- [ ] Add the chaos stuff; write tests that use pumba / tc to mess with the network.
+
+- [ ] Use secrets instead of env. vars to pass license / app ID.
