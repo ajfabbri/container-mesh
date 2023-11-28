@@ -9,7 +9,6 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
@@ -113,6 +112,7 @@ pub struct HeartbeatCtx {
     // TODO fold this into `state`?
     finished: Arc<AtomicBool>,
     collection: Arc<Mutex<Collection>>,
+    #[allow(dead_code)]  // keepalive ref
     subscription: Arc<Subscription>,
 }
 

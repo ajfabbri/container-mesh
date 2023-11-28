@@ -10,7 +10,6 @@ use dittolive_ditto::prelude::*;
 
 pub struct PeerConsumer {
     // TODO stats
-    event_count: usize,
     next_record_by_peer: HashMap<PeerId, usize>,
     msg_latency: LatencyStats,
     msg_latency_total: u64,
@@ -23,7 +22,6 @@ pub struct PeerConsumer {
 impl PeerConsumer {
     fn new(subscription: Subscription) -> Self {
         Self {
-            event_count: 0,
             next_record_by_peer: HashMap::new(),
             msg_latency: LatencyStats::new(),
             msg_latency_total: 0,

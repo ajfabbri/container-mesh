@@ -37,8 +37,6 @@ struct Cli {
 
 struct CoordinatorContext {
     ditto: Ditto,
-    plan: Option<ExecutionPlan>,
-    start_time_msec: u64,
     coord_collection: Option<Collection>,
     coord_doc_id: Option<DocumentId>,
     hb_collection: Option<Collection>,
@@ -258,7 +256,7 @@ fn wait_for_peer_states(
 }
 
 fn generate_plan(_ctx: &CoordinatorContext) -> ExecutionPlan {
-    let mut plan = ExecutionPlan::default();
+    let plan = ExecutionPlan::default();
     plan
 }
 
@@ -269,8 +267,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     debug!("Args {:?}", cli);
     let mut ctx = CoordinatorContext {
         ditto: make_ditto()?,
-        plan: None,
-        start_time_msec: 0,
         coord_collection: None,
         coord_doc_id: None,
         hb_collection: None,
