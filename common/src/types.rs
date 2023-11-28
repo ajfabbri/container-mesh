@@ -124,6 +124,7 @@ pub struct LatencyStats {
     pub min_usec: u64,
     pub max_usec: u64,
     pub avg_usec: u64,
+    pub distinct_peers: usize,
 }
 
 impl LatencyStats {
@@ -133,6 +134,7 @@ impl LatencyStats {
             min_usec: u64::MAX,
             max_usec: 0,
             avg_usec: 0,
+            distinct_peers: 0,
         }
     }
 }
