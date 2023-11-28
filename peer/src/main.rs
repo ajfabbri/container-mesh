@@ -7,6 +7,10 @@ use env_logger::Env;
 use log::*;
 use std::collections::HashSet;
 use std::error::Error;
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -39,6 +43,10 @@ struct Cli {
 
     #[arg(short, long, default_value = "peer")]
     device_name: String,
+
+    #[arg(short, long, default_value = "/output")]
+    output_dir: String,
+
 }
 
 fn make_ditto(device_name: &str) -> Result<Ditto, DittoError> {
@@ -399,7 +407,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     info!("--> Running test plan..");
     let report = run_test(&mut pctx)?;
-    info!("--> Test report: {:?}", report);
+    let fname = PathBuf::from(format!("{}/{}-report.json", &cli.output_dir, &cli.device_name));
+
+    info!("--> Test report (saving to {}): {:?}", fname.to_str().unwrap(), report);
+
+    // write report to file
+    let mut f = File::create(fname)?;
+    f.write_all(format!("{:?}", report).as_bytes())?;
+    drop(f);
 
     // shutdown
     heartbeat_stop(pctx.hb_ctx.as_ref().unwrap());

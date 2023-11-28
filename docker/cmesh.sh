@@ -50,6 +50,17 @@ stop_coord() {
     fi
 }
 
+run_peer() {
+    local i=$1
+    local beginport=$2
+    local endport=$3
+    docker run -d --rm --name cmesh-peer-$i --label cmesh \
+      --network=mesh --expose "$beginport-$endport" \
+      -v peer-output:/output \
+    cmesh-peer --coord-addr $COORD_ADDR --coord-port $COORD_PORT \
+      --bind-port $beginport --output-dir=/output --device-name peer$i
+  }
+
 
 run_peers() {
     local scale=$1
@@ -58,10 +69,7 @@ run_peers() {
         beginport=$((5100 + ( i * block_sz) ))
         endport=$((beginport + block_sz - 1))
         set -x
-        docker run -d --rm --name cmesh-peer-$i --label cmesh \
-          --network=mesh --expose "$beginport-$endport" \
-        cmesh-peer --coord-addr $COORD_ADDR --coord-port $COORD_PORT \
-          --bind-port $beginport --device-name peer$i
+        run_peer $i $beginport $endport
         set +x
     done
 }
@@ -82,6 +90,8 @@ do_run() {
       mesh
     run_coord $((scale - 1))    # allow one peer to fail?
     run_peers $scale
+    volpath=$(docker volume inspect peer-output -f '{{.Mountpoint}}')
+    echo "*** Peer output will be in $volpath ***"
 }
 
 do_stop() {
@@ -119,7 +129,7 @@ do_watch() {
     fi
     cleanup()
     {
-       kill "${pids[@]}"
+        kill "${pids[@]}" 2>/dev/null || true
     }
 
     trap cleanup EXIT
