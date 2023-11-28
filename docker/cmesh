@@ -56,11 +56,15 @@ run_peer() {
     local i=$1
     local beginport=$2
     local endport=$3
+    local coord_addr=$4
+    local coord_port=$5
     set -x
+    echo cmesh-peer --coord-addr $COORD_ADDR --coord-port $COORD_PORT etc..
     docker run -d --rm --name cmesh-peer-$i --label cmesh \
       --network=mesh --expose "$beginport-$endport" \
       -v peer-output:/output \
-    cmesh-peer --coord-addr $COORD_ADDR --coord-port $COORD_PORT \
+      --log-driver=journald  --log-opt labels=peer-$i \
+    cmesh-peer --coord-addr $coord_addr --coord-port $coord_port \
       --bind-port $beginport --output-dir=/output --device-name peer$i
     set +x
   }
@@ -68,18 +72,18 @@ run_peer() {
 
 run_peers() {
     local scale=$1
-    PARALLEL=
+    PARALLEL=1
     if [[ -n $PARALLEL ]]; then
         export -f run_peer
         time parallel -j 8 'startport=$((5100 + ( {} * 10 ) )); endport=$((startport + 9)); ' \
-            'run_peer {} $startport $endport'  ::: \
+            'run_peer {} $startport $endport ' $COORD_ADDR $COORD_PORT  ::: \
           $(seq 0 $((scale - 1)))
     else
         block_sz=10
         for (( i = 0; i<scale; i++ )); do
             beginport=$((5100 + ( i * block_sz) ))
             endport=$((beginport + block_sz - 1))
-            run_peer $i $beginport $endport
+            run_peer $i $beginport $endport $COORD_ADDR $COORD_PORT
         done
     fi
 }
