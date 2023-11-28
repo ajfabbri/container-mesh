@@ -57,7 +57,26 @@ etc..
 
 ### To Run in Your Environment
 
-Config files:
+You may need to increase some system limits to run a large number of containers.
+
+I use journald logging for docker, so I can read logs after containers
+terminate for debugging. This required me to increase max inotify instances to
+get around this error:
+
+_journald: error initializing inotify watches: too many open files_
+
+
+```
+ echo 512 | sudo tee /proc/sys/fs/inotify/max_user_instances
+```
+
+To make this persist via /etc/sysctl.conf:
+
+```
+fs.inotify.max_user_instances = 512
+```
+
+#### Config files:
 
 - .envrc    Environment variables needed for building (rust) agents.
 - .env      Non-secret vars to be set in containers at runtime.
