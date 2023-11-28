@@ -16,7 +16,7 @@ SUBNET="10.1.0.0/16"
 GATEWAY="10.1.0.1"
 
 usage() {
-    echo "Usage: $0 build | stop | run <scale-factor> | clean | watch"
+    echo "Usage: $0 build | stop | run <scale-factor> | clean | watch | ls"
     echo "  ARCH=$ARCH      FLAVOR=$FLAVOR"
     exit 1
 }
@@ -162,9 +162,14 @@ do_watch() {
         echo "--> watching $cid"
         (docker logs -f -t --tail=10 "$cid" | sed -e "s/^/$cid: /")&
         pids+=($!)
-        echo pids: ${pids[@]}
     done
     wait
+}
+
+do_ls() {
+    peer_output_fs=$(docker volume inspect peer-output | jq '.[0].Mountpoint' | tr -d '"')
+    echo "Listing output dir: $peer_output_fs"
+    sudo ls -l $peer_output_fs
 }
 
 # === main ===
@@ -199,6 +204,10 @@ while [[ $# -gt 0 ]]; do
       MODE=watch
       shift # past argument
       ;;
+    ls)
+      MODE=ls
+      shift # past argument
+      ;;
     -*|--*)
       echo "Unknown option $1"
       exit 1
@@ -224,4 +233,6 @@ elif [[ $MODE == "clean" ]]; then
     do_clean
 elif [[ $MODE == "watch" ]]; then
     do_watch
+elif [[ $MODE == "ls" ]]; then
+    do_ls
 fi
