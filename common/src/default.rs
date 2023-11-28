@@ -22,7 +22,8 @@ impl Default for ExecutionPlan {
     fn default() -> Self {
         let some_id = format!("{:x}", rand::random::<u64>());
         ExecutionPlan {
-            start_time: util::system_time_msec() + 5000,
+            // XXX TODO base start time on peers being ready
+            start_time: util::system_time_msec() + 10000,
             test_duration_sec: 60,
             report_collection_name: REPORT_COLLECTION_NAME.to_string(),
             peer_collection_name: PEER_COLLECTION_NAME.to_string(),
