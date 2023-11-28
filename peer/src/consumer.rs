@@ -69,7 +69,9 @@ impl PeerConsumer {
     }
 
     pub fn get_message_latency(&self) -> LatencyStats {
-        self.msg_latency.clone()
+        let mut stats = self.msg_latency.clone();
+        stats.distinct_peers = self.next_record_by_peer.len();
+        stats
     }
 }
 
