@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source .env
+source .secret.env
 
 FLAVOR=${FLAVOR:-debug}
 

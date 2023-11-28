@@ -4,18 +4,8 @@ FROM ubuntu:22.04
 
 ARG FLAVOR
 ARG ARCH
-ARG COORD_ADDR
-ARG COORD_PORT=4001
-ARG BIND_PORT
-ARG DEVICE_NAME
-
-#ENV DEVICE_NAME=${DEVICE_NAME}
 ENV FLAVOR=${FLAVOR}
 ENV ARCH=${ARCH}
-ENV COORD_ADDR=${COORD_ADDR}
-ENV COORD_PORT=${COORD_PORT}
-ENV BIND_PORT=${BIND_PORT}
-ENV DEVICE_NAME=${DEVICE_NAME}
 
 # install traffic control (tc) etc.
 RUN apt update && apt install iproute2 bash file findutils -y
@@ -27,7 +17,9 @@ WORKDIR /root
 
 COPY ./target/${ARCH}/${FLAVOR:-release}/cmesh-peer ./${ARCH}/${FLAVOR:-RELEASE}/
 COPY ./target/${ARCH}/${FLAVOR:-release}/**/libdittoffi.so ./${ARCH}/${FLAVOR:-RELEASE}/
-COPY ./docker/run-peer.sh .
+COPY .secret.env .env ./docker/run-peer.sh .
 
-CMD ["bash", "-c", \
-"./run-peer.sh --bind-port $BIND_PORT --coord-addr $COORD_ADDR --coord-port $COORD_PORT --device-name $DEVICE_NAME"]
+ENTRYPOINT ["/bin/bash", "./run-peer.sh"]
+
+# pass to docker run: --bind-port $BIND_PORT --device-name $DEVICE_NAME
+#     "--coord-addr", "$COORD_ADDR", "--coord-port" "$COORD_PORT"]

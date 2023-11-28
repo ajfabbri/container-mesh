@@ -4,13 +4,9 @@ FROM ubuntu:22.04
 
 ARG FLAVOR
 ARG ARCH
-ARG BIND_ADDR
-ARG BIND_PORT
 
 ENV FLAVOR=${FLAVOR}
 ENV ARCH=${ARCH}
-ENV BIND_ADDR=${BIND_ADDR}
-ENV BIND_PORT=${BIND_PORT}
 
 # install traffic control (tc) etc.
 RUN apt update && apt install iproute2 bash file findutils -y
@@ -20,7 +16,7 @@ WORKDIR /root
 # copy rust binaries from target/
 COPY ./target/${ARCH}/${FLAVOR:-release}/cmesh-coordinator ./${ARCH}/${FLAVOR:-release}/
 COPY ./target/${ARCH}/${FLAVOR:-release}/**/libdittoffi.so ./${ARCH}/${FLAVOR:-release}/
-COPY ./docker/run-coord.sh .
+COPY ./docker/run-coord.sh .env .secret.env .
 
-CMD ["bash", "-c", \
-"./run-coord.sh --bind-addr ${BIND_ADDR}  --bind-port $BIND_PORT --min-peers $MIN_PEERS"]
+ENTRYPOINT ["bash", "./run-coord.sh"]
+# Pass to docker run: --bind-addr $BIND_ADDR  --bind-port $BIND_PORT --min-peers $MIN_PEERSj
