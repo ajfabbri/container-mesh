@@ -1,4 +1,5 @@
 .secret.env
 Cargo.lock
 /target*
+/perf-output/*
 

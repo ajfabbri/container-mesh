@@ -24,9 +24,15 @@ usage() {
 build_coord() {
     # take all args
     local build_args="$1"
-
+    if [[ $FLAVOR = "debug" ]]; then
+        # for running perf in container
+        echo "--> Building debug coordinator w/ perf support.."
+        dockerfile="docker/Dockerfile.profile.coord"
+    else
+        dockerfile="docker/Dockerfile.coord"
+    fi
     pre='docker build '
-    post=' -t cmesh-coord -f docker/Dockerfile.coord .'
+    post=" -t cmesh-coord -f $dockerfile ."
     eval "$pre" "$build_args" "$post"
 }
 
@@ -39,7 +45,10 @@ build_peer() {
 run_coord() {
     local scale=$1
     set -x
-    docker run -d --rm --name cmesh-coord --label cmesh \
+#    --mount type=bind,source=/,target=/host \
+    # run privileged if running perf in container
+    docker run --privileged \
+      -d --rm --name cmesh-coord --label cmesh \
       --network=mesh --ip=$COORD_ADDR \
     cmesh-coord --bind-addr $COORD_ADDR --bind-port $COORD_PORT --min-peers $scale
     set +x
