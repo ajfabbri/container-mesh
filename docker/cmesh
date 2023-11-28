@@ -6,7 +6,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 # config
 ARCH=${ARCH:-x86_64-unknown-linux-gnu}
-FLAVOR=${FLAVOR:-release}
+FLAVOR=${FLAVOR:-debug}
 
 COORD_PORT=4001
 COORD_ADDR="10.1.0.2"
@@ -54,24 +54,29 @@ run_peer() {
     local i=$1
     local beginport=$2
     local endport=$3
+    set - x
     docker run -d --rm --name cmesh-peer-$i --label cmesh \
       --network=mesh --expose "$beginport-$endport" \
       -v peer-output:/output \
     cmesh-peer --coord-addr $COORD_ADDR --coord-port $COORD_PORT \
       --bind-port $beginport --output-dir=/output --device-name peer$i
+    set +x
   }
 
 
 run_peers() {
     local scale=$1
-    for (( i = 0; i<scale; i++)); do
-        block_sz=10
-        beginport=$((5100 + ( i * block_sz) ))
-        endport=$((beginport + block_sz - 1))
-        set -x
-        run_peer $i $beginport $endport
-        set +x
-    done
+    # Non-parallel version:
+    #for (( i = 0; i<scale; i++)); do
+    #    block_sz=10
+    #    beginport=$((5100 + ( i * block_sz) ))
+    #    endport=$((beginport + block_sz - 1))
+    #    run_peer $i $beginport $endport
+    #done
+    export -f run_peer
+    time parallel -j 8 'startport=$((5100 + ( {} * 10 ) )); endport=$((startport + 9)); ' \
+        'run_peer {} $startport $endport'  ::: \
+      $(seq 0 $((scale - 1)))
 }
 
 stop_peers() {
