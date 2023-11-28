@@ -38,9 +38,11 @@ build_peer() {
 
 run_coord() {
     local scale=$1
+    set -x
     docker run -d --rm --name cmesh-coord --label cmesh \
       --network=mesh --ip=$COORD_ADDR \
     cmesh-coord --bind-addr $COORD_ADDR --bind-port $COORD_PORT --min-peers $scale
+    set +x
 }
 
 stop_coord() {
@@ -54,7 +56,7 @@ run_peer() {
     local i=$1
     local beginport=$2
     local endport=$3
-    set - x
+    set -x
     docker run -d --rm --name cmesh-peer-$i --label cmesh \
       --network=mesh --expose "$beginport-$endport" \
       -v peer-output:/output \
@@ -66,17 +68,20 @@ run_peer() {
 
 run_peers() {
     local scale=$1
-    # Non-parallel version:
-    #for (( i = 0; i<scale; i++)); do
-    #    block_sz=10
-    #    beginport=$((5100 + ( i * block_sz) ))
-    #    endport=$((beginport + block_sz - 1))
-    #    run_peer $i $beginport $endport
-    #done
-    export -f run_peer
-    time parallel -j 8 'startport=$((5100 + ( {} * 10 ) )); endport=$((startport + 9)); ' \
-        'run_peer {} $startport $endport'  ::: \
-      $(seq 0 $((scale - 1)))
+    PARALLEL=
+    if [[ -n $PARALLEL ]]; then
+        export -f run_peer
+        time parallel -j 8 'startport=$((5100 + ( {} * 10 ) )); endport=$((startport + 9)); ' \
+            'run_peer {} $startport $endport'  ::: \
+          $(seq 0 $((scale - 1)))
+    else
+        block_sz=10
+        for (( i = 0; i<scale; i++ )); do
+            beginport=$((5100 + ( i * block_sz) ))
+            endport=$((beginport + block_sz - 1))
+            run_peer $i $beginport $endport
+        done
+    fi
 }
 
 stop_peers() {
@@ -93,7 +98,7 @@ do_run() {
     docker network create -d bridge \
       --ip-range $IP_RANGE --subnet $SUBNET --gateway $GATEWAY \
       mesh
-    run_coord $((scale - 1))    # allow one peer to fail?
+    run_coord $scale
     run_peers $scale
     volpath=$(docker volume inspect peer-output -f '{{.Mountpoint}}')
     echo "*** Peer output will be in $volpath ***"
@@ -124,6 +129,7 @@ do_clean() {
     do_stop
     # clean up docker disk space
     docker system prune -f
+    docker volume rm peer-output || true
 }
 
 do_watch() {
