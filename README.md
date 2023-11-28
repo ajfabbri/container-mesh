@@ -15,22 +15,45 @@ high mobility, and other failure conditions.
 
 Tested with `DITTO_TARGET=x86_64-unknown-linux-gnu`
 
-*Debug*
+*Building Debug*
 
 `cargo build --target $DITTO_TARGET`
 
-`docker compose build --build-arg "FLAVOR=debug"`
+`docker/cmesh build`
 
-`docker compose up`
-
-*Release*
+*Building Release*
 
 `cargo build --target $DITTO_TARGET --release`
 
-`docker compose build`
+`FLAVOR=release docker/cmesh build`
+
+#### Running, etc.
+
+Run 20 peers:
+
+`docker/cmesh run 20`
+
+Tail all container logs:
+
+`docker/cmesh watch`
+
+Stop all cmesh containers:
+
+`docker/cmesh stop`
+
+Delete all container builds, etc., and stop all cmesh containers:
+
+`docker/cmesh clean`
+
+*Deprecated / Untested: Use docker compose:*
+
+Debug: `docker compose build --build-arg "FLAVOR=debug"`
+
+Release: `docker compose build`
 
 `docker compose up`
 
+etc..
 
 ### To Run in Your Environment
 
