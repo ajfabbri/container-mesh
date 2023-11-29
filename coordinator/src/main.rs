@@ -255,8 +255,12 @@ fn wait_for_peer_states(
     Ok(())
 }
 
-fn generate_plan(_ctx: &CoordinatorContext) -> ExecutionPlan {
-    let plan = ExecutionPlan::default();
+fn generate_plan(ctx: &CoordinatorContext, duration_sec: u32) -> ExecutionPlan {
+    let mut plan = ExecutionPlan::default();
+    for p in ctx.peers.lock().unwrap().iter() {
+        plan.peers.push(p.clone());
+    }
+    plan.test_duration_sec = duration_sec;
     plan
 }
 
@@ -283,7 +287,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     info!("-> wait for quorum");
     wait_for_quorum(&mut ctx, &cli.coord_collection, cli.min_peers)?;
     info!("-> got quorum, writing test plan..");
-    let plan = generate_plan(&ctx);
+    let plan = generate_plan(&ctx, cli.test_duration_sec);
     set_coord_info_plan(
         ctx.coord_collection.as_ref().unwrap(),
         ctx.coord_doc_id.unwrap(),
