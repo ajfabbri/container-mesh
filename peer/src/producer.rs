@@ -31,13 +31,6 @@ pub fn producer_send(prod_ctx: &mut ProducerCtx) {
     let hbc_lock = prod_ctx.collection.lock().unwrap();
     let rec = PeerRecord::default();
     // TODO fill in rec.data to pad size as desired
-
-    //let rec_path = &vec![
-    //    "logs",
-    //    prod_ctx.peer_id.to_string().as_str(),
-    //    prod_ctx.msg_index.to_string().as_str(),
-    //]
-    //.join(".");
     let rec_path = format!(
         "logs['{}']['{}']",
         prod_ctx.peer_id.to_string().as_str(),

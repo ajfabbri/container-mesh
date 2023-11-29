@@ -67,7 +67,6 @@ impl PeerConsumer {
     }
 
     fn process_peer_doc(&mut self, pdoc: PeerDoc) {
-        debug!("--> process_peer_doc {:?}", pdoc);
         for (peer_id, log) in pdoc.logs {
             self.process_peer(peer_id, log);
         }
@@ -107,14 +106,15 @@ pub fn consumer_start(pctx: &PeerContext) -> Result<PeerConsumerRef, Box<dyn Err
     let query = coll.as_ref().unwrap().find_by_id(peer_doc_id.clone());
     info!(
         "--> consumer_start for coll {} w/ doc id {}",
-        plan.peer_collection_name, peer_doc_id
+        plan.peer_collection_name,
+        peer_doc_id.to_query_compatible(StringPrimitiveFormat::WithoutQuotes)
     );
 
     let _consumer = Arc::new(Mutex::new(PeerConsumer::new(query.subscribe())));
     let consumer = _consumer.clone();
     let live_query = query
         .observe_local(move |doc: Option<BoxedDocument>, event| {
-            debug!("-> observe peer event {:?}", event);
+            trace!("-> observe peer event {:?}", event);
             if doc.is_none() {
                 return;
             }
