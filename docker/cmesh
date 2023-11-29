@@ -123,7 +123,7 @@ do_run() {
 do_stop() {
     stop_peers || true
     stop_coord || true
-    docker network rm mesh
+    docker network rm -f mesh
 }
 
 do_build() {
@@ -196,7 +196,7 @@ do_watch() {
         local name=${names[$i]}
         local color="$(get_rainbow_color $i)"
         echo -e "$color --> watching $name $uncolor$cid"
-        (docker logs -f -t --tail=10 "$cid" 2>&1 | sed -e "s/^.*\[\(.*\)/${color}${name}::${uncolor}\1/p")&
+        (docker logs -f -t --tail=10 "$cid" 2>&1 | sed -e "s/^[^\[]*\[\(.*\)/${color}${name}::${uncolor}\[\1/")&
         pids+=($!)
     done
     wait
