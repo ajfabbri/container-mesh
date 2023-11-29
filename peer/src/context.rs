@@ -51,6 +51,11 @@ impl PeerContext {
         }
     }
 
+    pub fn get_plan(&self) -> Option<ExecutionPlan> {
+        let ci = self.coord_info.as_ref()?;
+        ci.execution_plan.clone()
+    }
+
     pub fn state_transition(
         &mut self,
         existing: Option<PeerState>,
