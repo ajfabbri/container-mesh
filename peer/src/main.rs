@@ -372,6 +372,7 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
     producer_stop(&producer);
 
     let msg_count = _pthread.join().unwrap().unwrap();
+    pctx.state_transition(Some(PeerState::Running), PeerState::Reporting)?;
 
     // Return test report
     let consumer = _consumer.lock().unwrap();
@@ -380,6 +381,8 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
         message_latency: consumer.get_message_latency(),
         records_produced: msg_count,
     };
+    pctx.state_transition(Some(PeerState::Reporting), PeerState::Shutdown)?;
+    std::thread::sleep(std::time::Duration::from_secs(1));
     Ok(report)
 }
 
