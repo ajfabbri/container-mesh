@@ -103,7 +103,7 @@ pub fn consumer_start(pctx: &PeerContext) -> Result<PeerConsumerRef, Box<dyn Err
     let coll = pctx.peer_collection.as_ref().unwrap().lock();
     let plan = pctx.get_plan().unwrap();
     let peer_doc_id = plan.peer_doc_id.clone();
-    let query = coll.as_ref().unwrap().find_by_id(peer_doc_id.clone());
+    let query = coll.as_ref().unwrap().find_by_id(&peer_doc_id);
     info!(
         "--> consumer_start for coll {} w/ doc id {}",
         plan.peer_collection_name,

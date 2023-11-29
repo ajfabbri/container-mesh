@@ -38,7 +38,7 @@ pub fn producer_send(prod_ctx: &mut ProducerCtx) {
     );
     debug!("---> producer_send: update path: {} -> {:?}", rec_path, rec);
     hbc_lock
-        .find_by_id(prod_ctx.plan.peer_doc_id.clone())
+        .find_by_id(&prod_ctx.plan.peer_doc_id)
         .update(|mut_doc| {
             debug!("---> producer set {} to {:?}", rec_path, rec);
             let mut_doc = mut_doc.unwrap();
