@@ -130,7 +130,7 @@ fn set_coord_info_plan(
     cid: DocumentId,
     plan: ExecutionPlan,
 ) -> Result<(), DittoError> {
-    debug!("-> update_coord_info for {:?}", cc.name());
+    debug!("-> update_coord_info for {:?}: {:?}", cc.name(), plan);
     let _res = cc.find_by_id(cid).update(|mut_doc| {
         let mut_doc = mut_doc.unwrap();
         mut_doc
@@ -288,6 +288,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     wait_for_quorum(&mut ctx, &cli.coord_collection, cli.min_peers)?;
     info!("-> got quorum, writing test plan..");
     let plan = generate_plan(&ctx, cli.test_duration_sec);
+    debug!(
+        "--> peer_doc_id: {} === {:?}",
+        plan.peer_doc_id
+            .to_query_compatible(StringPrimitiveFormat::WithoutQuotes),
+        plan.peer_doc_id
+    );
     set_coord_info_plan(
         ctx.coord_collection.as_ref().unwrap(),
         ctx.coord_doc_id.unwrap(),

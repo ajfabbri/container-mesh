@@ -63,7 +63,7 @@ impl PeerContext {
     ) -> Result<(), Box<dyn Error>> {
         let mut state = self.state.lock().unwrap();
         assert!(existing.is_none() || existing.unwrap() == *state);
-        info!("--> state_transition: {:?} -> {:?}", self.state, new);
+        info!("--> state_transition: {:?} -> {:?}", state, new);
         *state = new;
         Ok(())
     }

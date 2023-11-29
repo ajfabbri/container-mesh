@@ -310,6 +310,7 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
         .connect
         .tcp_servers
         .clone();
+    let n = all_peers.len();
     let peers = pctx.get_plan().unwrap().peers;
     for peer in peers {
         if peer.peer_id == pctx.id {
@@ -318,6 +319,8 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
         info!("--> Adding connection to peer {}", peer.peer_ip_addr);
         all_peers.insert(peer.peer_ip_addr.clone());
     }
+    let m = all_peers.len();
+    info!("--> connect_mesh: {} -> {}", n, m);
     let mut new_config = pctx.transport_config.as_ref().unwrap().clone();
     new_config.connect.tcp_servers = all_peers;
     pctx.ditto
