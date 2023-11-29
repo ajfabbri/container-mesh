@@ -23,6 +23,14 @@ if [ "$FLAVOR" = "debug" ]; then
     export RUST_BACKTRACE=1
 fi
 
+if [ ! -f "/lib/libdittoffi.so" ]; then
+    if [ ! -f "$ARCH/$FLAVOR/libdittoffi.so" ]; then
+        echo "Error: libdittoffi.so not found in /lib or $ARCH/$FLAVOR"
+        exit 1
+    fi
+    ln -s "$(pwd)/$ARCH/$FLAVOR/libdittoffi.so" /lib/libdittoffi.so
+fi
+
 set -x
 uname -a
 PBIN="./$ARCH/$FLAVOR/cmesh-peer"

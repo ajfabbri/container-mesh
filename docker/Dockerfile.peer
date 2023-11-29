@@ -16,7 +16,10 @@ WORKDIR /root
 #COPY ./target/${ARCH} ./${ARCH}
 
 COPY ./target/${ARCH}/${FLAVOR:-release}/cmesh-peer ./${ARCH}/${FLAVOR:-RELEASE}/
-COPY ./target/${ARCH}/${FLAVOR:-release}/**/libdittoffi.so ./${ARCH}/${FLAVOR:-RELEASE}/
+# cmesh script will place the .so here before we build
+COPY ./target/${ARCH}/${FLAVOR:-release}/libdittoffi.so ./${ARCH}/${FLAVOR:-RELEASE}/
+#COPY ./target/${ARCH}/${FLAVOR:-release}/**/libdittoffi.so /lib/libdittoffi.so
+
 COPY .secret.env .env ./docker/run-peer.sh .
 
 ENTRYPOINT ["/bin/bash", "./run-peer.sh"]
