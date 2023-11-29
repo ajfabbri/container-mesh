@@ -145,22 +145,55 @@ do_clean() {
     docker volume rm peer-output || true
 }
 
+get_rainbow_color() {
+    local i=$1
+    local rate=0.4
+    local red=$(echo "s($rate * $i) * 64 + 192" | bc -l)
+    local green=$(echo "s($rate * $i + 2 * 3.14 / 3) * 64 + 192" | bc -l)
+    local blue=$(echo "s($rate * $i + 4 * 3.14 / 3) * 64 + 192" | bc -l)
+    # as integers
+    red=$(echo "($red + 0.5)/1" | bc)
+    green=$(echo "($green + 0.5)/1" | bc)
+    blue=$(echo "($blue + 0.5)/1" | bc)
+    printf "\x1b[38;2;%d;%d;%dm" $red $green $blue
+}
+
 do_watch() {
-    cids=$(docker ps -q -f label=cmesh)
-    if [[ -z $cids ]]; then
+    # store list of all docker container names
+    cids=(); names=()
+    while read -r line; do
+        names+=("$line")
+    done <<< $(docker ps -f label=cmesh --format '{{.Names}}')
+    while read -r line; do
+        cids+=("$line")
+    done <<< $(docker ps -q -f label=cmesh)
+
+    # assert both arrays are same length
+    if [ -z "$names" ]; then
         echo "No cmesh containers running"
         exit 1
     fi
+    n=${#names[@]}
+    if [[ n -ne ${#cids[@]} ]]; then
+        echo "Error: mismatched container names and ids $n != ${#cids[@]}"
+        exit 1
+    fi
+    uncolor="\x1b[0m"
     cleanup()
     {
+        # reset colors
+        echo -ne "$uncolor"
         kill "${pids[@]}" 2>/dev/null || true
     }
 
     trap cleanup EXIT
 
-    for cid in ${cids[@]}; do
-        echo "--> watching $cid"
-        (docker logs -f -t --tail=10 "$cid" | sed -e "s/^/$cid: /")&
+    for i in $(seq 0 $(( n - 1 ))); do
+        local cid=${cids[$i]}
+        local name=${names[$i]}
+        local color="$(get_rainbow_color $i)"
+        echo -e "$color --> watching $name $uncolor$cid"
+        (docker logs -f -t --tail=10 "$cid" 2>&1 | sed -e "s/^.*\[\(.*\)/${color}${name}::${uncolor}\1/p")&
         pids+=($!)
     done
     wait
