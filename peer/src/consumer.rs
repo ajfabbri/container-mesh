@@ -1,5 +1,10 @@
 use log::*;
-use std::{collections::HashMap, error::Error, sync::{Arc, Mutex}, cmp};
+use std::{
+    cmp,
+    collections::HashMap,
+    error::Error,
+    sync::{Arc, Mutex},
+};
 
 use crate::PeerContext;
 use common::{
@@ -129,6 +134,6 @@ pub fn consumer_start(pctx: &PeerContext) -> Result<PeerConsumerRef, Box<dyn Err
             }
         })
         .unwrap();
-        _consumer.lock().unwrap().live_query = Some(live_query);
+    _consumer.lock().unwrap().live_query = Some(live_query);
     Ok(_consumer)
 }
