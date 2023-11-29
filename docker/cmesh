@@ -16,7 +16,7 @@ SUBNET="10.1.0.0/16"
 GATEWAY="10.1.0.1"
 
 usage() {
-    echo "Usage: $0 build | stop | run <scale-factor> | clean | watch | ls"
+    echo "Usage: $0 build | stop | run <scale-factor> | clean | watch | ls | rm | cat"
     echo "  ARCH=$ARCH      FLAVOR=$FLAVOR"
     exit 1
 }
@@ -55,7 +55,7 @@ run_coord() {
 }
 
 stop_coord() {
-    cs=$(docker ps -q -f ancestor=cmesh-coord)
+    cs=$(docker ps -q -f name=cmesh-coord)
     if [[ -n $cs ]]; then
         docker stop $cs
     fi
@@ -172,6 +172,22 @@ do_ls() {
     sudo ls -l $peer_output_fs
 }
 
+do_rm() {
+    peer_output_fs=$(docker volume inspect peer-output | jq '.[0].Mountpoint' | tr -d '"')
+    echo "Clearing output dir: $peer_output_fs"
+    sudo sh -c "rm $peer_output_fs/*"
+}
+
+do_cat() {
+    peer_output_fs=$(docker volume inspect peer-output | jq '.[0].Mountpoint' | tr -d '"')
+    for f in $(sudo ls -1 $peer_output_fs); do
+        echo "# $f"
+        sudo cat $peer_output_fs/$f
+        echo
+    done
+}
+
+
 # === main ===
 
 # parse cli args
@@ -208,6 +224,14 @@ while [[ $# -gt 0 ]]; do
       MODE=ls
       shift # past argument
       ;;
+    rm)
+      MODE=rm
+      shift # past argument
+      ;;
+    cat)
+      MODE=cat
+      shift # past argument
+      ;;
     -*|--*)
       echo "Unknown option $1"
       exit 1
@@ -235,4 +259,8 @@ elif [[ $MODE == "watch" ]]; then
     do_watch
 elif [[ $MODE == "ls" ]]; then
     do_ls
+elif [[ $MODE == "rm" ]]; then
+    do_rm
+elif [[ $MODE == "cat" ]]; then
+    do_cat
 fi
