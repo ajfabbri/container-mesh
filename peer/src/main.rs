@@ -310,14 +310,7 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
         .connect
         .tcp_servers
         .clone();
-    let peers = &pctx
-        .coord_info
-        .as_ref()
-        .unwrap()
-        .execution_plan
-        .as_ref()
-        .unwrap()
-        .peers;
+    let peers = pctx.get_plan().unwrap().peers;
     for peer in peers {
         if peer.peer_id == pctx.id {
             continue;
@@ -337,14 +330,7 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
     connect_mesh(pctx)?;
 
     // wait for start time
-    let plan = pctx
-        .coord_info
-        .as_ref()
-        .unwrap()
-        .execution_plan
-        .as_ref()
-        .unwrap()
-        .clone();
+    let plan = pctx.get_plan().unwrap();
     let start_time = plan.start_time;
     let now = system_time_msec();
     // XXX TODO can underflow

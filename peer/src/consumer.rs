@@ -77,13 +77,7 @@ impl PeerConsumer {
 
 pub fn consumer_create_collection(pctx: &PeerContext) -> Result<Collection, Box<dyn Error>> {
     let store = pctx.ditto.store();
-    let plan = pctx
-        .coord_info
-        .as_ref()
-        .unwrap()
-        .execution_plan
-        .as_ref()
-        .unwrap();
+    let plan = pctx.get_plan().unwrap();
     let cc = store.collection(&plan.peer_collection_name)?;
     let mylog: HashMap<String, PeerRecord> = HashMap::new();
     let mut peer_logs = HashMap::new();
@@ -103,13 +97,7 @@ pub type PeerConsumerRef = Arc<Mutex<PeerConsumer>>;
 
 pub fn consumer_start(pctx: &PeerContext) -> Result<PeerConsumerRef, Box<dyn Error>> {
     let coll = pctx.peer_collection.as_ref().unwrap().lock();
-    let plan = pctx
-        .coord_info
-        .as_ref()
-        .unwrap()
-        .execution_plan
-        .as_ref()
-        .unwrap();
+    let plan = pctx.get_plan().unwrap();
     let peer_doc_id = plan.peer_doc_id.clone();
     let query = coll.as_ref().unwrap().find_by_id(peer_doc_id.clone());
     info!(
