@@ -17,14 +17,18 @@ for var in DITTO_APP_ID DITTO_PG_TOKEN; do
     fi
 done
 
-echo "Copying libdittoffi.so to /lib"
-find $ARCH/$FLAVOR -name libdittoffi.so \
-    -exec cp {} /lib \;
-
 echo "ENV: "; env
 if [ "$FLAVOR" = "debug" ]; then
     set -x
     export RUST_BACKTRACE=1
+fi
+
+if [ ! -f "/lib/libdittoffi.so" ]; then
+    if [ ! -f "$ARCH/$FLAVOR/libdittoffi.so" ]; then
+        echo "Error: libdittoffi.so not found in /lib or $ARCH/$FLAVOR"
+        exit 1
+    fi
+    ln -s "$(pwd)/$ARCH/$FLAVOR/libdittoffi.so" /lib/libdittoffi.so
 fi
 
 set -x
