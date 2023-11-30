@@ -7,7 +7,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # config
 ARCH=${ARCH:-x86_64-unknown-linux-gnu}
 FLAVOR=${FLAVOR:-debug}
-TEST_SECONDS=${TEST_SECONDS:-10}
+TEST_SECONDS=${TEST_SECONDS:-20}
 
 COORD_PORT=4001
 COORD_ADDR="10.1.0.2"
@@ -46,7 +46,6 @@ build_peer() {
 run_coord() {
     local scale=$1
     set -x
-#    --mount type=bind,source=/,target=/host \
     # run privileged if running perf in container
     docker run --privileged \
       -d --rm --name cmesh-coord --label cmesh \
@@ -55,6 +54,8 @@ run_coord() {
       --test-duration-sec $TEST_SECONDS
 
     set +x
+#    --mount type=bind,source=/,target=/host \
+#    -e RUST_LOG=debug \
 }
 
 stop_coord() {
@@ -160,7 +161,7 @@ do_clean() {
 
 get_rainbow_color() {
     local i=$1
-    local rate=0.4
+    local rate=0.8
     local red=$(echo "s($rate * $i) * 64 + 192" | bc -l)
     local green=$(echo "s($rate * $i + 2 * 3.14 / 3) * 64 + 192" | bc -l)
     local blue=$(echo "s($rate * $i + 4 * 3.14 / 3) * 64 + 192" | bc -l)
