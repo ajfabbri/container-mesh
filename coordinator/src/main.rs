@@ -155,7 +155,10 @@ fn init_coord_collection(
     )?);
     debug!(
         "-> wrote coord info doc id {}",
-        ctx.coord_doc_id.as_ref().unwrap().to_query_compatible(StringPrimitiveFormat::WithoutQuotes)
+        ctx.coord_doc_id
+            .as_ref()
+            .unwrap()
+            .to_query_compatible(StringPrimitiveFormat::WithoutQuotes)
     );
     Ok(())
 }
