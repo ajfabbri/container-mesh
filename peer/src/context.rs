@@ -30,6 +30,7 @@ pub struct PeerContext {
     pub state: Arc<Mutex<PeerState>>,
     pub peer_collection: Option<Arc<Mutex<Collection>>>,
     pub peer_consumer: Option<PeerConsumer>,
+    pub presence: Option<PresenceObserver>,
 }
 
 impl PeerContext {
@@ -50,6 +51,7 @@ impl PeerContext {
             state: Arc::new(Mutex::new(PeerState::Init)),
             peer_collection: None,
             peer_consumer: None,
+            presence: None,
         }
     }
 
