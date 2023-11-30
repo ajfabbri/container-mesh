@@ -43,6 +43,7 @@ impl Display for PeerState {
 pub struct Peer {
     pub peer_id: PeerId,
     pub peer_ip_addr: String,
+    pub peer_port: u16,
     pub state: PeerState,
 }
 

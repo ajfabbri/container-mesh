@@ -14,7 +14,7 @@ use crate::consumer::PeerConsumer;
 pub struct PeerContext {
     pub id: PeerId,
     pub ditto: Ditto,
-    pub coord_addr: Option<String>,
+    pub coord_addr: Option<String>, // e.g. "10.2.3.4:6789"
     pub coord_doc_id: Option<DocumentId>,
     pub coord_info: Option<CoordinatorInfo>,
     // Keep a copy of our last transport config so we can modify and re-set it.
@@ -26,13 +26,14 @@ pub struct PeerContext {
     #[allow(dead_code)]
     pub start_time_msec: u64,
     pub local_ip: String,
+    pub local_port: u16,
     pub state: Arc<Mutex<PeerState>>,
     pub peer_collection: Option<Arc<Mutex<Collection>>>,
     pub peer_consumer: Option<PeerConsumer>,
 }
 
 impl PeerContext {
-    pub fn new(device_name: &str, ditto: Ditto, local_ip: &str) -> Self {
+    pub fn new(device_name: &str, ditto: Ditto, local_ip: &str, local_port: u16) -> Self {
         Self {
             id: random_peer_id(Some(&device_name)),
             ditto,
@@ -45,6 +46,7 @@ impl PeerContext {
             hb_thread: None,
             start_time_msec: system_time_msec(),
             local_ip: local_ip.to_string(),
+            local_port,
             state: Arc::new(Mutex::new(PeerState::Init)),
             peer_collection: None,
             peer_consumer: None,
