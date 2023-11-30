@@ -123,7 +123,7 @@ pub fn consumer_start(pctx: &PeerContext) -> Result<PeerConsumerRef, Box<dyn Err
                 Ok(pdoc) => {
                     //let p = doc.unwrap().to_cbor().unwrap();
                     //print_cdoc(&p).unwrap();
-                    consumer.lock().unwrap().process_peer_doc(pdoc);
+                    consumer.lock().unwrap().process_peer_doc(&pdoc);
                 }
                 Err(e) => {
                     error!("PeerDoc deser Error {:?}", e);

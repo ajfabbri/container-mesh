@@ -109,8 +109,6 @@ pub struct HeartbeatCtx {
     // TODO fold this into `state`?
     finished: Arc<AtomicBool>,
     collection: Arc<Mutex<Collection>>,
-    #[allow(dead_code)] // keepalive ref
-    subscription: Arc<Subscription>,
 }
 
 // implement new
@@ -121,7 +119,6 @@ impl HeartbeatCtx {
         doc_id: DocumentId,
         state: Arc<Mutex<PeerState>>,
         collection: Arc<Mutex<Collection>>,
-        subscription: Arc<Subscription>,
     ) -> Self {
         HeartbeatCtx {
             peer_id,
@@ -130,7 +127,6 @@ impl HeartbeatCtx {
             state,
             finished: Arc::new(AtomicBool::new(false)),
             collection,
-            subscription,
         }
     }
 }
@@ -262,13 +258,15 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
             break;
         }
     }
+    // No longer need to get heartbeat updates
+    drop(hb_sub);
+
     let hctx = HeartbeatCtx::new(
         pctx.id.clone(),
         hb_record,
         hb_doc_id,
         pctx.state.clone(),
         hbc.clone(),
-        Arc::new(hb_sub.unwrap()),
     );
     pctx.hb_thread = Some(heartbeat_start(hctx.clone()));
     pctx.hb_ctx = Some(hctx);
