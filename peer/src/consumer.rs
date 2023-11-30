@@ -44,13 +44,13 @@ impl PeerConsumer {
         self.next_record_by_peer.insert(peer_id, i);
     }
 
-    fn process_peer(&mut self, id: PeerId, log: HashMap<String, PeerRecord>) {
+    fn process_peer(&mut self, id: PeerId, log: &HashMap<String, PeerRecord>) {
         let now = system_time_usec();
         let mut i = self.peek_next_idx(&id);
+        debug!("--> process_peer {} w/ log len {}", id, log.len());
         loop {
             let rec = log.get(i.to_string().as_str());
             if rec.is_none() {
-                debug!("--> no peer record for i={}", i);
                 break;
             }
             let r = rec.unwrap();
@@ -66,9 +66,9 @@ impl PeerConsumer {
         self.set_next_idx(id, i);
     }
 
-    fn process_peer_doc(&mut self, pdoc: PeerDoc) {
-        for (peer_id, log) in pdoc.logs {
-            self.process_peer(peer_id, log);
+    fn process_peer_doc(&mut self, pdoc: &PeerDoc) {
+        for (peer_id, log) in &pdoc.logs {
+            self.process_peer(peer_id.to_string(), log);
         }
     }
 
