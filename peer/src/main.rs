@@ -322,17 +322,12 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
         all_peers.insert(peer_str);
     }
     let m = all_peers.len();
-    info!("--> connect_mesh: {} -> {}", n, m);
+    info!("--> connect_mesh: num peers {} -> {}", n, m);
     let mut new_config = pctx.transport_config.as_ref().unwrap().clone();
     new_config.connect.tcp_servers = all_peers;
-    pctx.ditto
-        .set_transport_config(pctx.transport_config.as_ref().unwrap().clone());
     debug!("--> set transport config: {:?}", new_config);
-    pctx.ditto.register_on_connecting_callback(|peer, respond| {
-        info!("--> on_connecting: {:?}", peer);
-        respond(true);
-    });
-    // XXX
+    pctx.ditto
+        .set_transport_config(new_config);
     std::thread::sleep(std::time::Duration::from_secs(1));
     Ok(())
 }
