@@ -206,7 +206,7 @@ do_watch() {
         local name=${names[$i]}
         local color="$(get_rainbow_color $i)"
         echo -e "$color --> watching $name $uncolor$cid"
-        (docker logs -f -t --tail=10 "$cid" 2>&1 | sed -e "s/^[^\[]*\[\(.*\)/${color}${name}::${uncolor}\[\1/")&
+        (docker logs -f -t --tail=10 "$cid" 2>&1 | sed -e "s/^[^\[]*\[\(.*\)/${color}${name}::\[\1${uncolor}/")&
         pids+=($!)
     done
     wait
