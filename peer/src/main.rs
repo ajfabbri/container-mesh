@@ -109,7 +109,7 @@ pub struct HeartbeatCtx {
     // TODO fold this into `state`?
     finished: Arc<AtomicBool>,
     collection: Arc<Mutex<Collection>>,
-    #[allow(dead_code)]  // keepalive ref
+    #[allow(dead_code)] // keepalive ref
     subscription: Arc<Subscription>,
 }
 
@@ -406,9 +406,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     info!("--> Running test plan..");
     let report = run_test(&mut pctx)?;
-    let fname = PathBuf::from(format!("{}/{}-report.json", &cli.output_dir, &cli.device_name));
+    let fname = PathBuf::from(format!(
+        "{}/{}-report.json",
+        &cli.output_dir, &cli.device_name
+    ));
 
-    info!("--> Test report (saving to {}): {:?}", fname.to_str().unwrap(), report);
+    info!(
+        "--> Test report (saving to {}): {:?}",
+        fname.to_str().unwrap(),
+        report
+    );
 
     // write report to file
     let mut f = File::create(fname)?;
