@@ -96,6 +96,11 @@ fn init_transport(pctx: &mut PeerContext, cli: &Cli) -> Result<(), Box<dyn Error
     pctx.ditto.set_transport_config(config.clone());
     pctx.transport_config = Some(config);
     pctx.coord_addr = Some(coord_addr.clone());
+    if log_enabled!(Level::Debug) {
+        pctx.presence = Some(pctx.ditto.presence().observe(|pgraph| {
+            debug!("--> presence update: {}", concise_presence(pgraph));
+        }));
+    }
     Ok(())
 }
 
