@@ -38,14 +38,13 @@ struct Cli {
     bind_addr: Option<String>,
 
     #[arg(short = 'p', long)]
-    bind_port: Option<u32>,
+    bind_port: Option<u16>,
 
     #[arg(short, long, default_value = "peer")]
     device_name: String,
 
     #[arg(short, long, default_value = "/output")]
     output_dir: String,
-
 }
 
 fn make_ditto(device_name: &str) -> Result<Ditto, DittoError> {
@@ -88,9 +87,7 @@ fn init_transport(pctx: &mut PeerContext, cli: &Cli) -> Result<(), Box<dyn Error
     config.connect.websocket_urls = HashSet::new();
     config.listen.tcp.enabled = true;
     config.listen.tcp.interface_ip = pctx.local_ip.clone();
-    if cli.bind_port.is_some() {
-        config.listen.tcp.port = cli.bind_port.unwrap_or(0).try_into()?;
-    }
+    config.listen.tcp.port = cli.bind_port.unwrap_or(0);
     info!(
         "-> set transport config {}:{}",
         config.listen.tcp.interface_ip, config.listen.tcp.port
@@ -234,6 +231,7 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
             state: PeerState::Init,
             peer_id: pctx.id.clone(),
             peer_ip_addr: pctx.local_ip.clone(),
+            peer_port: pctx.local_port,
         },
         sent_at_usec: 0,
     };
@@ -316,8 +314,9 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
         if peer.peer_id == pctx.id {
             continue;
         }
-        info!("--> Adding connection to peer {}", peer.peer_ip_addr);
-        all_peers.insert(peer.peer_ip_addr.clone());
+        let peer_str = format!("{}:{}", &peer.peer_ip_addr, peer.peer_port);
+        info!("--> Adding connection to peer {}", peer_str);
+        all_peers.insert(peer_str);
     }
     let m = all_peers.len();
     info!("--> connect_mesh: {} -> {}", n, m);
@@ -325,6 +324,13 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
     new_config.connect.tcp_servers = all_peers;
     pctx.ditto
         .set_transport_config(pctx.transport_config.as_ref().unwrap().clone());
+    debug!("--> set transport config: {:?}", new_config);
+    pctx.ditto.register_on_connecting_callback(|peer, respond| {
+        info!("--> on_connecting: {:?}", peer);
+        respond(true);
+    });
+    // XXX
+    std::thread::sleep(std::time::Duration::from_secs(1));
     Ok(())
 }
 
@@ -393,6 +399,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         &cli.device_name,
         make_ditto(&cli.device_name)?,
         resolve_local_ip(cli.bind_addr.clone()).as_str(),
+        cli.bind_port.unwrap(),
     );
     debug!("Args {:?}", cli);
     bootstrap_peer(&mut pctx, &cli)?;
