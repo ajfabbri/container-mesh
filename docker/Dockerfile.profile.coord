@@ -1,0 +1,26 @@
+# Use a small base image so we can scale to many containers.
+#FROM alpine:3.18 <- need to figure out musl build to get this working
+FROM ubuntu:22.04
+
+ARG FLAVOR
+ARG ARCH
+
+ENV FLAVOR=${FLAVOR}
+ENV ARCH=${ARCH}
+ENV PATH=${PATH}:/host/usr/bin
+
+# install traffic control (tc) etc.
+RUN apt update && apt install iproute2 bash file findutils \
+  lsb-release binutils linux-tools-generic -y
+#RUN apk add --no-cache iproute2 bash dos2unix file
+
+WORKDIR /root
+# copy rust binaries from target/
+COPY ./target/${ARCH}/${FLAVOR:-release}/cmesh-coordinator ./${ARCH}/${FLAVOR:-release}/
+# cmesh script will place the .so here before we build
+COPY ./target/${ARCH}/${FLAVOR:-release}/libdittoffi.so ./${ARCH}/${FLAVOR:-RELEASE}/
+#COPY ./target/${ARCH}/${FLAVOR:-release}/**/libdittoffi.so ./${ARCH}/${FLAVOR:-release}/
+COPY ./docker/run-coord.sh .env .secret.env .
+
+ENTRYPOINT ["bash", "./run-coord.sh"]
+# Pass to docker run: --bind-addr $BIND_ADDR  --bind-port $BIND_PORT --min-peers $MIN_PEERSj
