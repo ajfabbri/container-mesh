@@ -14,7 +14,7 @@ use common::{
 use dittolive_ditto::prelude::*;
 
 pub struct PeerConsumer {
-    // TODO stats
+    local_id: PeerId,
     next_record_by_peer: HashMap<PeerId, usize>,
     msg_latency: LatencyStats,
     msg_latency_total: u64,
@@ -25,8 +25,9 @@ pub struct PeerConsumer {
 }
 
 impl PeerConsumer {
-    fn new(subscription: Subscription) -> Self {
+    fn new(local_id: PeerId, subscription: Subscription) -> Self {
         Self {
+            local_id,
             next_record_by_peer: HashMap::new(),
             msg_latency: LatencyStats::new(),
             msg_latency_total: 0,
@@ -68,6 +69,10 @@ impl PeerConsumer {
 
     fn process_peer_doc(&mut self, pdoc: &PeerDoc) {
         for (peer_id, log) in &pdoc.logs {
+            if peer_id == &self.local_id {
+                // don't process your own records
+                continue;
+            }
             self.process_peer(peer_id.to_string(), log);
         }
     }
@@ -110,7 +115,7 @@ pub fn consumer_start(pctx: &PeerContext) -> Result<PeerConsumerRef, Box<dyn Err
         peer_doc_id.to_query_compatible(StringPrimitiveFormat::WithoutQuotes)
     );
 
-    let _consumer = Arc::new(Mutex::new(PeerConsumer::new(query.subscribe())));
+    let _consumer = Arc::new(Mutex::new(PeerConsumer::new(pctx.id.clone(), query.subscribe())));
     let consumer = _consumer.clone();
     let live_query = query
         .observe_local(move |doc: Option<BoxedDocument>, event| {
