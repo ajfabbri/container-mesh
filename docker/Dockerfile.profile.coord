@@ -18,7 +18,7 @@ WORKDIR /root
 # copy rust binaries from target/
 COPY ./target/${ARCH}/${FLAVOR:-release}/cmesh-coordinator ./${ARCH}/${FLAVOR:-release}/
 # cmesh script will place the .so here before we build
-COPY ./target/${ARCH}/${FLAVOR:-release}/libdittoffi.so ./${ARCH}/${FLAVOR:-RELEASE}/
+COPY ./target/${ARCH}/${FLAVOR:-release}/libdittoffi.so ./${ARCH}/${FLAVOR:-release}/
 #COPY ./target/${ARCH}/${FLAVOR:-release}/**/libdittoffi.so ./${ARCH}/${FLAVOR:-release}/
 COPY ./docker/run-coord.sh .env .secret.env .
 

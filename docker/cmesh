@@ -50,6 +50,7 @@ run_coord() {
     docker run --privileged \
       -d --rm --name cmesh-coord --label cmesh \
       --network=mesh --ip=$COORD_ADDR \
+      -e FLAVOR=$FLAVOR \
     cmesh-coord --bind-addr $COORD_ADDR --bind-port $COORD_PORT --min-peers $scale \
       --test-duration-sec $TEST_SECONDS
 
@@ -77,6 +78,7 @@ run_peer() {
       --network=mesh --expose "$beginport-$endport" \
       -v peer-output:/output \
       --log-driver=journald  --log-opt labels=peer-$i \
+      -e FLAVOR=$FLAVOR \
     cmesh-peer --coord-addr $coord_addr --coord-port $coord_port \
       --bind-port $beginport --output-dir=/output --device-name peer$i
     set +x
@@ -143,8 +145,8 @@ do_build() {
     fi
     cp $sopath target/$arch/$flavor/
 
-    if [[ $flavor = "debug" ]]; then
-        build_args+=" --build-arg FLAVOR=debug"
+    if [[ $flavor = "release" ]]; then
+        build_args+=" --build-arg FLAVOR=release"
     fi
     echo "--> build coordinator"
     build_coord "$build_args"
