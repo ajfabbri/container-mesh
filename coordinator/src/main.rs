@@ -51,24 +51,11 @@ fn make_ditto() -> Result<Ditto, DittoError> {
     let make_id = |ditto_root| {
         let app_id = AppId::from_env("DITTO_APP_ID")?;
         identity::OfflinePlayground::new(ditto_root, app_id)
-        //let shared_token = std::env::var("DITTO_PG_TOKEN").unwrap();
-        //let cloud_sync = true;
-        //let custom_auth_url = None;
-        //identity::OnlinePlayground::new(
-        //    ditto_root,
-        //    app_id,
-        //    shared_token,
-        //    cloud_sync,
-        //    custom_auth_url,
-        //)
     };
 
     // Connect to ditto
     let ditto = Ditto::builder()
         .with_temp_dir()
-        //.with_root(Arc::new(
-        //    PersistentRoot::from_current_exe().expect("Invalid Ditto Root"),
-        //))
         .with_minimum_log_level(LogLevel::Warning)
         .with_identity(make_id)?
         .build()
@@ -80,7 +67,6 @@ fn make_ditto() -> Result<Ditto, DittoError> {
 fn init_transport(ctx: &mut CoordinatorContext, cli: &Cli) -> Result<(), Box<dyn Error>> {
     let mut config = TransportConfig::default();
     config.peer_to_peer.lan.enabled = true;
-    // initialize peer set with coordinator's address and port
     config.connect.tcp_servers = HashSet::new();
     config.connect.websocket_urls = HashSet::new();
     config.listen.tcp.enabled = true;
