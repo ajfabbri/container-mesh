@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::default::Default;
 use dittolive_ditto::prelude::DocumentId;
 
@@ -31,6 +32,7 @@ impl Default for ExecutionPlan {
             min_msg_delay_msec: 10,
             max_msg_delay_msec: 500,
             peers: Vec::new(),
+            connections: HashMap::new(),
         }
     }
 }

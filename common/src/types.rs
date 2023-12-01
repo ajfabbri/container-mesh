@@ -47,6 +47,8 @@ pub struct Peer {
     pub state: PeerState,
 }
 
+pub type PeerGraph = HashMap<PeerId, Vec<PeerId>>;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Heartbeat {
     pub sender: Peer,
@@ -104,6 +106,7 @@ pub struct ExecutionPlan {
     pub min_msg_delay_msec: u32,
     pub max_msg_delay_msec: u32,
     pub peers: Vec<Peer>,
+    pub connections: PeerGraph,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -115,7 +118,7 @@ pub struct PeerRecord {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PeerDoc {
     pub _id: DocumentId,
-    pub logs: HashMap<PeerId, HashMap<String, PeerRecord>>
+    pub logs: HashMap<PeerId, HashMap<String, PeerRecord>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
