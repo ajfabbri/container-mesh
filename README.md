@@ -60,7 +60,7 @@ FLAVOR=release docker/cmesh build
 
 Run 20 peers:
 
-`docker/cmesh run 20`
+`docker/cmesh run 20` for debug build or `FLAVOR=release docker/cmesh run 20` for release builds.
 
 Tail all container logs:
 
