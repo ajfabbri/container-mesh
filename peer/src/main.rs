@@ -299,17 +299,11 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
         .tcp_servers
         .clone();
     let n = all_peers.len();
-    let peers = pctx.get_plan().unwrap().peers;
-    // To avoid having two connections between each pair, the peer with the lower IP address will
-    // be the active side of the TCP connection. So we only connect to peers with an address that
-    // is higher than ours.
-    for peer in peers {
-        if peer.peer_id == pctx.id || pctx.local_ip > peer.peer_ip_addr {
-            continue;
-        }
-        let peer_str = format!("{}:{}", &peer.peer_ip_addr, peer.peer_port);
-        info!("--> Adding connection to peer {}", peer_str);
-        all_peers.insert(peer_str);
+    let plan = pctx.get_plan().unwrap();
+    let my_peers = plan.connections.get(&pctx.id);
+    for p in my_peers.unwrap() {
+        let peer_obj = plan.peers.iter().find(|x| x.peer_id == *p).unwrap();
+        all_peers.insert(format!("{}:{}", peer_obj.peer_ip_addr, peer_obj.peer_port));
     }
     let m = all_peers.len();
     info!("--> connect_mesh: num peers {} -> {}", n, m);

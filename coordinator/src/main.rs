@@ -11,6 +11,9 @@ use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Condvar, Mutex};
 
+mod graph;
+use graph::*;
+
 #[derive(Parser, Debug)]
 struct Cli {
     #[arg(short, long, default_value = "container-mesh-coord")]
@@ -33,6 +36,9 @@ struct Cli {
 
     #[arg(short = 'p', long, default_value_t = 4001)]
     bind_port: u32,
+
+    #[arg(short = 'c', long, default_value_t = 3)]
+    max_peer_connections: usize,
 }
 
 struct CoordinatorContext {
@@ -96,7 +102,7 @@ impl HeartbeatProcessor {
             debug!("--> got heartbeat {:?}", hb);
             let mut peer_set = self.peer_set.lock().unwrap();
             peer_set.insert(hb.sender);
-            debug!("--> peer set: {:?}", peer_set);
+            trace!("--> peer set: {:?}", peer_set);
             self.added.notify_all();
         }
     }
@@ -244,11 +250,15 @@ fn wait_for_peer_states(
     Ok(())
 }
 
-fn generate_plan(ctx: &CoordinatorContext, duration_sec: u32) -> ExecutionPlan {
+fn generate_plan(ctx: &CoordinatorContext, duration_sec: u32, connection_degree: usize) -> ExecutionPlan {
     let mut plan = ExecutionPlan::default();
+    let mut peer_ids = Vec::new();
     for p in ctx.peers.lock().unwrap().iter() {
         plan.peers.push(p.clone());
+        peer_ids.push(p.peer_id.clone());
+
     }
+    plan.connections = make_connection_graph(peer_ids, connection_degree);
     plan.test_duration_sec = duration_sec;
     plan
 }
@@ -276,7 +286,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     info!("-> wait for quorum");
     wait_for_quorum(&mut ctx, &cli.coord_collection, cli.min_peers)?;
     info!("-> got quorum, writing test plan..");
-    let plan = generate_plan(&ctx, cli.test_duration_sec);
+    let plan = generate_plan(&ctx, cli.test_duration_sec, cli.max_peer_connections);
     debug!(
         "--> peer_doc_id: {} === {:?}",
         plan.peer_doc_id
