@@ -69,7 +69,7 @@ fn make_ditto() -> Result<Ditto, DittoError> {
         //.with_root(Arc::new(
         //    PersistentRoot::from_current_exe().expect("Invalid Ditto Root"),
         //))
-        .with_minimum_log_level(LogLevel::Info)
+        .with_minimum_log_level(LogLevel::Warning)
         .with_identity(make_id)?
         .build()
         .expect("ditto builder should succeed");
