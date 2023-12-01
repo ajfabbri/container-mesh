@@ -52,23 +52,11 @@ fn make_ditto(device_name: &str) -> Result<Ditto, DittoError> {
     let make_id = |ditto_root| {
         let app_id = AppId::from_env("DITTO_APP_ID")?;
         identity::OfflinePlayground::new(ditto_root, app_id)
-        //let shared_token = std::env::var("DITTO_PG_TOKEN").unwrap();
-        //let cloud_sync = true;
-        //let custom_auth_url = None;
-        //identity::OnlinePlayground::new(
-        //    ditto_root,
-        //    app_id,
-        //    shared_token,
-        //    cloud_sync,
-        //    custom_auth_url,
     };
 
     // Connect to ditto
     let ditto = Ditto::builder()
         .with_temp_dir()
-        // .with_root(Arc::new(
-        //     PersistentRoot::from_current_exe().expect("Invalid Ditto Root"),
-        // ))
         .with_minimum_log_level(LogLevel::Warning)
         .with_identity(make_id)?
         .build()
@@ -111,7 +99,6 @@ pub struct HeartbeatCtx {
     doc_id: DocumentId,
     // Could be an atomic usize w/ test and set as well
     state: Arc<Mutex<PeerState>>,
-    // TODO fold this into `state`?
     finished: Arc<AtomicBool>,
     collection: Arc<Mutex<Collection>>,
 }
@@ -303,7 +290,7 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
 }
 
 fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
-    // connect to all other peers in coord_info
+    // Connect to all other peers in coord_info.
     let mut all_peers = pctx
         .transport_config
         .as_ref()
@@ -329,8 +316,7 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
     let mut new_config = pctx.transport_config.as_ref().unwrap().clone();
     new_config.connect.tcp_servers = all_peers;
     debug!("--> set transport config: {:?}", new_config);
-    pctx.ditto
-        .set_transport_config(new_config);
+    pctx.ditto.set_transport_config(new_config);
     std::thread::sleep(std::time::Duration::from_secs(1));
     Ok(())
 }
