@@ -82,18 +82,6 @@ docker/cmesh cat    # output all test results to stdout
 docker/cmesh rm     # delete all test reports
 ```
 
-#### Deprecated / Untested: docker compose:
-
-_I abandoned docker compose because it is difficult to really scale up the number of containers without more control over the build process._
-
-Debug: `docker compose build --build-arg "FLAVOR=debug"`
-
-Release: `docker compose build`
-
-`docker compose up`
-
-etc..
-
 ### Running in Your Environment
 
 You may need to increase some system limits to run a large number of containers.
