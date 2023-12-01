@@ -1,33 +1,62 @@
 # Container Mesh testing for Ditto Small Peer
-Created to practice working with native, containerized Ditto API dev.
-(to speed up TDD for expected customer).
 
-Idea: Test harness for p2p apps that operate in limited connectivity and/or
-high-mobility environments. 
+Test harness for p2p apps that operate in limited connectivity and/or
+high-mobility environments, using the [Ditto](https://ditto.live) Rust SDK.
 
-## The App
-Idea is to run a bunch of containers with a peer-to-peer (p2p) ditto.live SDK
-"app" which measures system metrics, and then use Linux Traffic Control (tc) (via 
+Test-driven development for challenging edge sync use cases. Peer-to-peer only.
+
+## The Idea
+Run a bunch of containers with an app based on Ditto's small peer SDK. The app
+measures update latency and other system metrics.  Using containers makes it
+easy to scale to large node counts on a single machine, and to introduce chaos
+with Linux Traffic Control (tc) (via
 [pumba](https://github.com/alexei-led/pumba)?) to simulate a degraded network,
 high mobility, and other failure conditions.
 
-### Build / Run
+## The Code
 
-Tested with `DITTO_TARGET=x86_64-unknown-linux-gnu`
+`docker/` container creation / running / management
 
-*Building Debug*
+&nbsp;&nbsp;&nbsp;`cmesh` main driver script. Run without arguments for usage.
 
-`cargo build --target $DITTO_TARGET`
 
-`docker/cmesh build`
+`peer/`
 
-*Building Release*
+Peer application executes the test plan and reports results.
+We run N of these via `docker/cmesh run <N>`
 
-`cargo build --target $DITTO_TARGET --release`
+`coordinator/`
 
-`FLAVOR=release docker/cmesh build`
+Coordinator application which provides peer discovery, test plan
+generation, and coordination for peers.
+We run 1 of these for each test.
 
-#### Running, etc.
+`common/`
+
+Common Rust definitions and logic used by `peer` and `coordinator`.
+
+### Building
+
+Tested with `DITTO_TARGET=x86_64-unknown-linux-gnu`. Other architectures, for
+now, are left as an exercise for the reader. See section *Running in your
+environment* below for modifications you'll need to make to suit your
+environment.
+
+#### Building Debug
+
+```
+cargo build --target $DITTO_TARGET
+docker/cmesh build
+```
+
+### Building Release ###
+
+```
+cargo build --target $DITTO_TARGET --release
+FLAVOR=release docker/cmesh build
+```
+
+### Running and Collecting Results
 
 Run 20 peers:
 
@@ -45,7 +74,17 @@ Delete all container builds, etc., and stop all cmesh containers:
 
 `docker/cmesh clean`
 
-*Deprecated / Untested: Use docker compose:*
+Test results
+
+```
+docker/cmesh ls     # list peer test results
+docker/cmesh cat    # output all test results to stdout
+docker/cmesh rm     # delete all test reports
+```
+
+#### Deprecated / Untested: docker compose:
+
+_I abandoned docker compose because it is difficult to really scale up the number of containers without more control over the build process._
 
 Debug: `docker compose build --build-arg "FLAVOR=debug"`
 
@@ -55,7 +94,7 @@ Release: `docker compose build`
 
 etc..
 
-### To Run in Your Environment
+### Running in Your Environment
 
 You may need to increase some system limits to run a large number of containers.
 
@@ -76,7 +115,7 @@ To make this persist via /etc/sysctl.conf:
 fs.inotify.max_user_instances = 512
 ```
 
-#### Config files:
+#### Config Files
 
 - .envrc    Environment variables needed for building (rust) agents.
 - .env      Non-secret vars to be set in containers at runtime.
@@ -84,15 +123,23 @@ fs.inotify.max_user_instances = 512
 
 You'll need to create a file .secret.env that contains:
 
+```
 export DITTO_APP_ID="your Ditto app id"
+```
 
 For OfflinePlayground auth (current code):
 
+```
 export DITTO_LICENSE="your ditto license string"
+```
 
 For OnlinePlayround auth (currenly disabled):
 
+```
 export DITTO_PG_TOKEN="your playground token"
+```
+
+#### Other Architectures
 
 I'm developing on Ubuntu 22.04 for target x86_64-unknown-linux-gnu
 at the moment. To build this in your environment you'll need to modify .envrc.
@@ -163,7 +210,7 @@ Some TODOs:
     - [ ] calculate resync latency (bound on time to get full set of updates for
         some epoch) 
 
-- [ ] fix [cmesh-run.sh](docker/cmesh-run.sh) to allow spinning up huge sets of peers
+- [x] fix [cmesh-run.sh](docker/cmesh) to allow spinning up huge sets of peers
 
 - [ ] Add the chaos stuff; write tests that use pumba / tc to mess with the network.
 
