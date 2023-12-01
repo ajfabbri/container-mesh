@@ -311,7 +311,6 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
     new_config.connect.tcp_servers = all_peers;
     debug!("--> set transport config: {:?}", new_config);
     pctx.ditto.set_transport_config(new_config);
-    std::thread::sleep(std::time::Duration::from_secs(1));
     Ok(())
 }
 
