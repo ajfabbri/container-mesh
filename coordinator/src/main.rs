@@ -37,8 +37,12 @@ struct Cli {
     #[arg(short = 'p', long, default_value_t = 4001)]
     bind_port: u32,
 
-    #[arg(short = 'c', long, default_value_t = 3)]
-    max_peer_connections: usize,
+    #[arg(short = 'g',
+          long,
+          require_equals = true,
+          default_value_t = GraphType::Complete,
+          default_missing_value="complete", value_enum)]
+    connection_graph: GraphType,
 }
 
 struct CoordinatorContext {
@@ -250,15 +254,25 @@ fn wait_for_peer_states(
     Ok(())
 }
 
-fn generate_plan(ctx: &CoordinatorContext, duration_sec: u32, connection_degree: usize) -> ExecutionPlan {
+fn generate_plan(
+    ctx: &CoordinatorContext,
+    duration_sec: u32,
+    conn_graph: GraphType,
+) -> ExecutionPlan {
     let mut plan = ExecutionPlan::default();
     let mut peer_ids = Vec::new();
     for p in ctx.peers.lock().unwrap().iter() {
         plan.peers.push(p.clone());
         peer_ids.push(p.peer_id.clone());
-
     }
-    plan.connections = make_connection_graph(peer_ids, connection_degree);
+    match conn_graph {
+        GraphType::Complete => {
+            plan.connections = complete_graph(peer_ids);
+        }
+        GraphType::SpanningTree => {
+            plan.connections = spanning_tree(peer_ids, CONN_GRAPH_MAX_DEGREE);
+        }
+    }
     plan.test_duration_sec = duration_sec;
     plan
 }
@@ -286,7 +300,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     info!("-> wait for quorum");
     wait_for_quorum(&mut ctx, &cli.coord_collection, cli.min_peers)?;
     info!("-> got quorum, writing test plan..");
-    let plan = generate_plan(&ctx, cli.test_duration_sec, cli.max_peer_connections);
+    let plan = generate_plan(&ctx, cli.test_duration_sec, cli.connection_graph);
     debug!(
         "--> peer_doc_id: {} === {:?}",
         plan.peer_doc_id

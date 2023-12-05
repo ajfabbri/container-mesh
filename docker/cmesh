@@ -8,6 +8,8 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 ARCH=${ARCH:-x86_64-unknown-linux-gnu}
 FLAVOR=${FLAVOR:-debug}
 TEST_SECONDS=${TEST_SECONDS:-20}
+CONN_GRAPH_TYPE=${CONN_GRAPH_TYPE:-complete}
+RUST_LOG=${RUST_LOG:-info}
 
 COORD_PORT=4001
 COORD_ADDR="10.1.0.2"
@@ -50,13 +52,11 @@ run_coord() {
     docker run --privileged \
       -d --rm --name cmesh-coord --label cmesh \
       --network=mesh --ip=$COORD_ADDR \
-      -e FLAVOR=$FLAVOR \
+      -e FLAVOR=$FLAVOR -e RUST_LOG=$RUST_LOG \
     cmesh-coord --bind-addr $COORD_ADDR --bind-port $COORD_PORT --min-peers $scale \
-      --test-duration-sec $TEST_SECONDS
+      --test-duration-sec $TEST_SECONDS --connection-graph=$CONN_GRAPH_TYPE
 
     set +x
-#    --mount type=bind,source=/,target=/host \
-#    -e RUST_LOG=debug \
 }
 
 stop_coord() {
@@ -72,13 +72,13 @@ run_peer() {
     local endport=$3
     local coord_addr=$4
     local coord_port=$5
+    local rust_log=$6
     set -x
-    echo cmesh-peer --coord-addr $COORD_ADDR --coord-port $COORD_PORT etc..
     docker run -d --rm --name cmesh-peer-$i --label cmesh \
       --network=mesh --expose "$beginport-$endport" \
       -v peer-output:/output \
       --log-driver=journald  --log-opt labels=peer-$i \
-      -e FLAVOR=$FLAVOR \
+      -e FLAVOR=$FLAVOR -e RUST_LOG=$rust_log \
     cmesh-peer --coord-addr $coord_addr --coord-port $coord_port \
       --bind-port $beginport --output-dir=/output --device-name peer$i
     set +x
@@ -91,7 +91,7 @@ run_peers() {
     if [[ -n $PARALLEL ]]; then
         export -f run_peer
         time parallel -j 8 'startport=$((5100 + ( {} * 10 ) )); endport=$((startport + 9)); ' \
-            'run_peer {} $startport $endport ' $COORD_ADDR $COORD_PORT  ::: \
+            'run_peer {} $startport $endport ' $COORD_ADDR $COORD_PORT $RUST_LOG ::: \
           $(seq 0 $((scale - 1)))
     else
         block_sz=10

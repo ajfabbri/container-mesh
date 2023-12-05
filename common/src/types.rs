@@ -1,9 +1,10 @@
 use dittolive_ditto::prelude::DocumentId;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 use std::time::Duration;
+use clap::ValueEnum;
 
 pub use crate::default;
 pub type PeerId = String;
@@ -47,7 +48,12 @@ pub struct Peer {
     pub state: PeerState,
 }
 
-pub type PeerGraph = HashMap<PeerId, Vec<PeerId>>;
+pub type PeerGraph = HashMap<PeerId, HashSet<PeerId>>;
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
+pub enum GraphType {
+    Complete,
+    SpanningTree,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Heartbeat {
