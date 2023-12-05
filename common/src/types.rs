@@ -1,12 +1,13 @@
+use clap::ValueEnum;
 use dittolive_ditto::prelude::DocumentId;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 use std::time::Duration;
-use clap::ValueEnum;
 
 pub use crate::default;
+
 pub type PeerId = String;
 
 pub fn random_peer_id(prefix: Option<&str>) -> PeerId {
@@ -17,6 +18,50 @@ pub fn random_peer_id(prefix: Option<&str>) -> PeerId {
         pre = format!("{}_", prefix.unwrap());
     }
     format!("{}{:x}", pre, rand::random::<u64>())
+}
+
+// Assumes peer_id starts with "peer<num>_"
+pub fn short_peer_id(peer_id: &PeerId) -> String {
+    let num = peer_id.strip_prefix("peer");
+    match num {
+        Some(n) => n.split_once('_').unwrap_or((n.split_at(4).0, "")).0.to_string(),
+        None => {
+            let mut pre = peer_id.clone();
+            pre.truncate(4);
+            pre
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PeerGraph {
+    pub nmap: HashMap<PeerId, HashSet<PeerId>>,
+}
+
+impl PeerGraph {
+    pub fn new() -> Self {
+        Self {
+            nmap: HashMap::new(),
+        }
+    }
+
+    pub fn to_dot(&self) -> String {
+        let mut dot = String::new();
+        dot.push_str("digraph G {\n");
+        for (u, v) in &self.nmap {
+            for v in v {
+                dot.push_str(&format!("  {} -> {};\n", u, v));
+            }
+        }
+        dot.push_str("}\n");
+        dot
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
+pub enum GraphType {
+    Complete,
+    SpanningTree,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
@@ -46,13 +91,6 @@ pub struct Peer {
     pub peer_ip_addr: String,
     pub peer_port: u16,
     pub state: PeerState,
-}
-
-pub type PeerGraph = HashMap<PeerId, HashSet<PeerId>>;
-#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
-pub enum GraphType {
-    Complete,
-    SpanningTree,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

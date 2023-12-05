@@ -1,5 +1,6 @@
 use clap::Parser;
 use common::default::*;
+use common::graph::*;
 use common::types::PeerState::*;
 use common::types::*;
 use common::util::*;
@@ -10,9 +11,6 @@ use log::*;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::sync::{Arc, Condvar, Mutex};
-
-mod graph;
-use graph::*;
 
 #[derive(Parser, Debug)]
 struct Cli {

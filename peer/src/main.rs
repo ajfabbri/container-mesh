@@ -300,7 +300,7 @@ fn connect_mesh(pctx: &PeerContext) -> Result<(), Box<dyn Error>> {
         .clone();
     let n = all_peers.len();
     let plan = pctx.get_plan().unwrap();
-    let my_peers = plan.connections.get(&pctx.id);
+    let my_peers = plan.connections.nmap.get(&pctx.id);
     for p in my_peers.unwrap() {
         let peer_obj = plan.peers.iter().find(|x| x.peer_id == *p).unwrap();
         all_peers.insert(format!("{}:{}", peer_obj.peer_ip_addr, peer_obj.peer_port));
