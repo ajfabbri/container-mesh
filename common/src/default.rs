@@ -1,8 +1,7 @@
-use std::collections::HashMap;
 use std::default::Default;
 use dittolive_ditto::prelude::DocumentId;
 
-use crate::types::{ExecutionPlan, CoordinatorInfo, PeerRecord};
+use crate::types::*;
 use crate::util;
 
 pub const HEARTBEAT_COLLECTION_NAME: &str = "cmesh-heartbeat";
@@ -33,7 +32,7 @@ impl Default for ExecutionPlan {
             min_msg_delay_msec: 10,
             max_msg_delay_msec: 500,
             peers: Vec::new(),
-            connections: HashMap::new(),
+            connections: PeerGraph::new(),
         }
     }
 }
