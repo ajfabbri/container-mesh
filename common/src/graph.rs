@@ -61,7 +61,6 @@ pub fn spanning_tree(mut _peers: &Vec<PeerId>, max_degree: usize) -> PeerGraph {
     }
     peers.sort_by(|a, b| b.cmp(a));
     let root = peers.pop().unwrap();
-    println!("_graph: root: {}", root);
     perimeter.push_back(PeerEntry::new(root));
     while let Some(mut p) = perimeter.pop_front() {
         while p.degree() < max_degree {
@@ -91,7 +90,6 @@ pub fn local_attachment_model(peers: &[PeerId], m: usize) -> PeerGraph {
     assert!(m <= peers.len());
     // Start with a clique (complete graph) of m nodes
     let mut graph = complete_graph(&peers[..m]);
-    println!("clique of m={} graph: {:?}", m, graph);
     let to_add = Vec::from(&peers[m..]);
     for v in to_add {
         // Add v to graph, but first choose edges
@@ -99,11 +97,9 @@ pub fn local_attachment_model(peers: &[PeerId], m: usize) -> PeerGraph {
 
         // Chose root "LAN" attachment node randomly
         let root: &PeerId = graph.nmap.keys().choose(&mut rng).as_ref().unwrap();
-        println!("XXX to add {} choosing from {} vertices -> {}", v, graph.nmap.len(), root);
         // The LAN set is neighbors of root and the root
         let mut lan = graph.undirected_links(root).unwrap();
         lan.insert(root.to_string());
-        println!("XXX LAN is {:?}", lan);
         // Attach to nodes in LAN with degree-preferrential probability
         let _sum = lan
             .iter()
@@ -117,9 +113,7 @@ pub fn local_attachment_model(peers: &[PeerId], m: usize) -> PeerGraph {
             let flip = rng.gen_range(0.0..1.0);
             if flip <= probability {
                 v_edges.insert(w.to_string());
-                println!(" YES for {} in LAN, {:.3} <= p = {:.3} ({:.3}/{:.3})", short_peer_id(&w), flip, probability, w_degree, sum_lan_degree);
             } else {
-                println!("  NO for {} in LAN, {:.3} > p = {:.3} ({:.3}/{:.3})", short_peer_id(&w), flip, probability, w_degree, sum_lan_degree);
             }
         }
         // AF: don't allow unconnected nodes
@@ -129,7 +123,6 @@ pub fn local_attachment_model(peers: &[PeerId], m: usize) -> PeerGraph {
 
         // Add v to graph
         graph.nmap.insert(v, v_edges);
-        println!(" XXX -> graph: {:?}", graph);
     }
     graph
 }
