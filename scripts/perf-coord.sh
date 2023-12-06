@@ -6,10 +6,11 @@ source ../.env
 ARCH=${ARCH:-x86_64-unknown-linux-gnu}
 FLAVOR=${FLAVOR:-"debug"}
 
-if [ ! -d ../perf-output ]; then
-    mkdir ../perf-output
+OUT_DIR=${OUT_DIR:-../perf-profiling}
+if [ ! -d $OUT_DIR ]; then
+    mkdir $OUT_DIR
 fi
-cd ../perf-output
+cd $OUT_DIR
 
 if [ ! -f flamegraph.pl ]; then
     wget https://raw.githubusercontent.com/brendangregg/FlameGraph/master/flamegraph.pl

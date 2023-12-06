@@ -7,10 +7,13 @@ export ARCH=${ARCH:-x86_64-unknown-linux-gnu}
 export FLAVOR=release
 export RUST_LOG=warning
 
+# Automated iterations of container mesh tests.
+
 SCALE=${SCALE:-20}
 ITERATIONS=${ITERATIONS:-2}
 OUT_DIR=${OUT_DIR:-perf-results/test-loop}
 
+OUT_DIR="$OUT_DIR$(date +%Y%m%d-%H%M%S)"
 if [ ! -d $OUT_DIR ]; then
     mkdir -p $OUT_DIR
 fi
@@ -28,7 +31,6 @@ cargo build --target $ARCH --release
 docker/cmesh build 2>&1 > perf-results/cmesh-build.log
 set +x
 
-# write timestamp and parameters to test_info.log
 INFOLOG=$OUT_DIR/test_info.log
 echo "Test started $(date)" | tee $INFOLOG
 echo "scale $SCALE, iterations $ITERATIONS" | tee -a $INFOLOG
