@@ -268,7 +268,10 @@ fn generate_plan(
             plan.connections = complete_graph(&peer_ids);
         }
         GraphType::SpanningTree => {
-            plan.connections = spanning_tree(&peer_ids, CONN_GRAPH_MAX_DEGREE);
+            plan.connections = spanning_tree(&peer_ids, GRAPH_SPANNING_MAX_DEGREE);
+        }
+        GraphType::LAModel => {
+            plan.connections = local_attachment_model(&peer_ids, GRAPH_LA_CLIQUE_SIZE);
         }
     }
     plan.test_duration_sec = duration_sec;
