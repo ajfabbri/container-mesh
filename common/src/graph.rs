@@ -1,4 +1,6 @@
-use std::collections::{VecDeque, HashSet};
+use rand::prelude::IteratorRandom;
+use rand::Rng;
+use std::collections::{HashSet, VecDeque};
 
 use crate::types::*;
 
@@ -27,21 +29,22 @@ impl PeerEntry {
     }
 }
 
-
-pub fn complete_graph(peers: Vec<PeerId>) -> PeerGraph {
-    let mut graph: PeerGraph = PeerGraph::new();
+pub fn complete_graph(_peers: &[PeerId]) -> PeerGraph {
+    let mut graph = PeerGraph::new();
     // Add vertices to graph one at a time, adding edges to each vertex already in the graph.
     // Base case: one vertex: trivially complete.
     // Inductive step: assume graph G is complete. Construct G' by adding v to G, and edges to
     // each vertex u in G. There are no two vertices (m, n) in G' which do not share an edge;
     // there werent any in G, and v is connected to all vertices in G, thus G' is complete.
+    let mut peers = _peers.to_vec().clone();
+    peers.sort_by(|a, b| b.cmp(a));
     for v in peers {
         let mut edges_from_v = HashSet::new();
         for (u, _) in graph.nmap.iter_mut() {
             // add edges from to all vertices in G
             edges_from_v.insert(u.clone());
         }
-        graph.nmap.insert(v, edges_from_v);
+        graph.nmap.insert(v.to_string(), edges_from_v);
     }
     graph
 }
@@ -49,9 +52,10 @@ pub fn complete_graph(peers: Vec<PeerId>) -> PeerGraph {
 // Create a directed graph of peers with maximum vertex degree specified
 // Note: this makes a singly-connected tree, which may not be indicative of real-world mesh
 // networks.
-pub fn spanning_tree(mut peers: Vec<PeerId>, max_degree: usize) -> PeerGraph {
+pub fn spanning_tree(mut _peers: &Vec<PeerId>, max_degree: usize) -> PeerGraph {
     let mut perimeter = VecDeque::new();
-    let mut graph: PeerGraph = PeerGraph::new();
+    let mut graph = PeerGraph::new();
+    let mut peers = _peers.clone();
     if peers.len() == 0 {
         return graph;
     }
@@ -86,7 +90,7 @@ mod tests {
     #[test]
     fn test_complete_graph() {
         let peers = to_peer_ids_vec(0..10);
-        let graph = complete_graph(peers.clone());
+        let graph = complete_graph(&peers);
         assert_eq!(graph.nmap.len(), 10);
         for (u, _) in &graph.nmap {
             for (v, _) in &graph.nmap {
@@ -106,8 +110,7 @@ mod tests {
     #[test]
     pub fn test_spanning_tree() {
         let peers = to_peer_ids_vec(0..10);
-        let graph = spanning_tree(peers.clone(), 3);
-        println!("graph: {:?}", graph);
+        let graph = spanning_tree(&peers, 3);
         let mut unconnected: HashSet<PeerId> = peers.into_iter().collect();
         for (k, v) in graph.nmap.iter() {
             assert!(v.len() <= 3);
