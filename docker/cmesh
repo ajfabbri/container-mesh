@@ -19,7 +19,7 @@ SUBNET="10.1.0.0/16"
 GATEWAY="10.1.0.1"
 
 usage() {
-    echo "Usage: $0 build | stop | run <scale-factor> | clean | watch | ls | rm | cat"
+    echo "Usage: $0 build | stop | run <scale-factor> | clean | watch | ls | rm | cat | wait"
     echo "  ARCH=$ARCH      FLAVOR=$FLAVOR"
     exit 1
 }
@@ -224,7 +224,7 @@ do_ls() {
 do_rm() {
     peer_output_fs=$(docker volume inspect peer-output | jq '.[0].Mountpoint' | tr -d '"')
     echo "Clearing output dir: $peer_output_fs"
-    sudo sh -c "rm $peer_output_fs/*"
+    sudo sh -c "rm $peer_output_fs/* || true"
 }
 
 do_cat() {
@@ -233,6 +233,14 @@ do_cat() {
         echo "# $f"
         sudo cat $peer_output_fs/$f
         echo
+    done
+}
+
+do_wait() {
+    # wait untill all peers are finished, then kill remaining
+    # TODO make coordinator exit automatically
+    while [[ -n $(docker ps -q -f ancestor=cmesh-peer) ]]; do
+        sleep 2
     done
 }
 
@@ -281,6 +289,10 @@ while [[ $# -gt 0 ]]; do
       MODE=cat
       shift # past argument
       ;;
+    wait)
+      MODE=wait
+      shift # past argument
+      ;;
     -*|--*)
       echo "Unknown option $1"
       exit 1
@@ -312,4 +324,6 @@ elif [[ $MODE == "rm" ]]; then
     do_rm
 elif [[ $MODE == "cat" ]]; then
     do_cat
+elif [[ $MODE == "wait" ]]; then
+    do_wait
 fi
