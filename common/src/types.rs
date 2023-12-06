@@ -24,7 +24,11 @@ pub fn random_peer_id(prefix: Option<&str>) -> PeerId {
 pub fn short_peer_id(peer_id: &PeerId) -> String {
     let num = peer_id.strip_prefix("peer");
     match num {
-        Some(n) => n.split_once('_').unwrap_or((n.split_at(4).0, "")).0.to_string(),
+        Some(n) => n
+            .split_once('_')
+            .unwrap_or((n.split_at(4).0, ""))
+            .0
+            .to_string(),
         None => {
             let mut pre = peer_id.clone();
             pre.truncate(4);

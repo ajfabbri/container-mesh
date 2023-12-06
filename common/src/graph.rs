@@ -94,7 +94,11 @@ mod tests {
         assert_eq!(graph.nmap.len(), 10);
         for (u, _) in &graph.nmap {
             for (v, _) in &graph.nmap {
-                assert!(u == v || graph.nmap.get(u).unwrap().contains(v) || graph.nmap.get(v).unwrap().contains(u));
+                assert!(
+                    u == v
+                        || graph.nmap.get(u).unwrap().contains(v)
+                        || graph.nmap.get(v).unwrap().contains(u)
+                );
             }
         }
     }
@@ -122,7 +126,10 @@ mod tests {
         assert_eq!(graph.nmap.get("1").unwrap(), &to_peer_ids(4..7));
         assert_eq!(graph.nmap.get("2").unwrap(), &to_peer_ids(7..10));
         for i in 3..10 {
-            assert_eq!(graph.nmap.get(&i.to_string()).unwrap(), &HashSet::<PeerId>::new());
+            assert_eq!(
+                graph.nmap.get(&i.to_string()).unwrap(),
+                &HashSet::<PeerId>::new()
+            );
         }
     }
 }
