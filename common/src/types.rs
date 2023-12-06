@@ -49,6 +49,18 @@ impl PeerGraph {
         }
     }
 
+    // Treat each directed edge as an undirected edge, and return the set of neighbors for vertex
+    pub fn undirected_links(&self, vertex: &PeerId) -> Option<HashSet<PeerId>> {
+        let v = self.nmap.get(vertex)?;
+        let mut peers = v.clone();
+        for (u, neighbors) in &self.nmap {
+            if neighbors.contains(vertex) {
+                peers.insert(u.clone());
+            }
+        }
+        Some(peers)
+    }
+
     pub fn to_dot(&self) -> String {
         let mut dot = String::new();
         dot.push_str("digraph G {\n");

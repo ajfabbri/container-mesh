@@ -81,9 +81,62 @@ pub fn spanning_tree(mut _peers: &Vec<PeerId>, max_degree: usize) -> PeerGraph {
     graph
 }
 
+// Graph generation algorithm that aims to:
+// - Ensure that all vertices are connected to the same component (graph).
+// - Generally avoid singly-connected nodes (degree > 1) (TODO tweak attach probability?)
+// Inspired by "Local preferential attachment model for hierarchical newtorks", Wang et al. 2009
+// with alpha = 1.
+pub fn local_attachment_model(peers: &[PeerId], m: usize) -> PeerGraph {
+    let mut rng = &mut rand::thread_rng();
+    assert!(m <= peers.len());
+    // Start with a clique (complete graph) of m nodes
+    let mut graph = complete_graph(&peers[..m]);
+    println!("clique of m={} graph: {:?}", m, graph);
+    let to_add = Vec::from(&peers[m..]);
+    for v in to_add {
+        // Add v to graph, but first choose edges
+        let mut v_edges = HashSet::new();
+
+        // Chose root "LAN" attachment node randomly
+        let root: &PeerId = graph.nmap.keys().choose(&mut rng).as_ref().unwrap();
+        println!("XXX to add {} choosing from {} vertices -> {}", v, graph.nmap.len(), root);
+        // The LAN set is neighbors of root and the root
+        let mut lan = graph.undirected_links(root).unwrap();
+        lan.insert(root.to_string());
+        println!("XXX LAN is {:?}", lan);
+        // Attach to nodes in LAN with degree-preferrential probability
+        let _sum = lan
+            .iter()
+            .map(|x| graph.undirected_links(x).as_ref().unwrap().len() as u64)
+            .sum::<u64>();
+        assert!(_sum>0);
+        let sum_lan_degree = _sum as f64;
+        for w in lan {
+            let w_degree = f64::from(graph.undirected_links(&w).as_ref().unwrap().len() as u32);
+            let probability = w_degree / sum_lan_degree;
+            let flip = rng.gen_range(0.0..1.0);
+            if flip <= probability {
+                v_edges.insert(w.to_string());
+                println!(" YES for {} in LAN, {:.3} <= p = {:.3} ({:.3}/{:.3})", short_peer_id(&w), flip, probability, w_degree, sum_lan_degree);
+            } else {
+                println!("  NO for {} in LAN, {:.3} > p = {:.3} ({:.3}/{:.3})", short_peer_id(&w), flip, probability, w_degree, sum_lan_degree);
+            }
+        }
+        // AF: don't allow unconnected nodes
+        if v_edges.len() == 0 {
+            v_edges.insert(root.to_string());
+        }
+
+        // Add v to graph
+        graph.nmap.insert(v, v_edges);
+        println!(" XXX -> graph: {:?}", graph);
+    }
+    graph
+}
+
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::{collections::HashSet, fs::File, io::Write};
 
     use super::*;
 
@@ -131,5 +184,27 @@ mod tests {
                 &HashSet::<PeerId>::new()
             );
         }
+    }
+
+    #[test]
+    pub fn test_graphs_to_dot() {
+        let peers = to_peer_ids_vec(0..30);
+
+        let complete = complete_graph(&peers);
+        let spanning = spanning_tree(&peers, 4);
+        let la_model = local_attachment_model(&peers, 4);
+
+        File::create("complete.dot")
+            .unwrap()
+            .write_all(complete.to_dot().as_bytes())
+            .unwrap();
+        File::create("spanning.dot")
+            .unwrap()
+            .write_all(spanning.to_dot().as_bytes())
+            .unwrap();
+        File::create("la_model.dot")
+            .unwrap()
+            .write_all(la_model.to_dot().as_bytes())
+            .unwrap();
     }
 }
