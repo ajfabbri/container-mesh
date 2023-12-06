@@ -265,10 +265,10 @@ fn generate_plan(
     }
     match conn_graph {
         GraphType::Complete => {
-            plan.connections = complete_graph(peer_ids);
+            plan.connections = complete_graph(&peer_ids);
         }
         GraphType::SpanningTree => {
-            plan.connections = spanning_tree(peer_ids, CONN_GRAPH_MAX_DEGREE);
+            plan.connections = spanning_tree(&peer_ids, CONN_GRAPH_MAX_DEGREE);
         }
     }
     plan.test_duration_sec = duration_sec;
