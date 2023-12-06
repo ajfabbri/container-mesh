@@ -7,7 +7,8 @@ use crate::util;
 pub const HEARTBEAT_COLLECTION_NAME: &str = "cmesh-heartbeat";
 pub const REPORT_COLLECTION_NAME: &str = "cmesh-report";
 pub const PEER_COLLECTION_NAME: &str = "cmesh-peers";
-pub const CONN_GRAPH_MAX_DEGREE: usize = 3;
+pub const GRAPH_SPANNING_MAX_DEGREE: usize = 3;
+pub const GRAPH_LA_CLIQUE_SIZE: usize = 4;
 
 impl Default for CoordinatorInfo {
     fn default() -> Self {

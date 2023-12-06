@@ -78,6 +78,7 @@ impl PeerGraph {
 pub enum GraphType {
     Complete,
     SpanningTree,
+    LAModel,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
