@@ -3,4 +3,5 @@ Cargo.lock
 /target*
 /perf-results
 /perf-profiling
+scripts/venv
 
