@@ -9,13 +9,13 @@ use std::{
 use crate::PeerContext;
 use common::{
     types::*,
-    util::{print_cdoc, system_time_usec},
+    util::{print_cdoc, system_time_usec}, default::PEER_LOG_SIZE,
 };
 use dittolive_ditto::prelude::*;
 
 pub struct PeerConsumer {
     local_id: PeerId,
-    next_record_by_peer: HashMap<PeerId, u32>,
+    last_ts_idx_by_peer: HashMap<PeerId, (u64, u32)>,
     msg_latency: LatencyStats,
     msg_latency_total: u64,
     // To keep subscription alive as needed
@@ -24,11 +24,19 @@ pub struct PeerConsumer {
     pub live_query: Option<LiveQuery>,
 }
 
+fn incr_wrap(i: u32, max: u32) -> u32 {
+    let mut r = i + 1;
+    if r > max {
+        r = 0;
+    }
+    r
+}
+
 impl PeerConsumer {
     fn new(local_id: PeerId, subscription: Subscription) -> Self {
         Self {
             local_id,
-            next_record_by_peer: HashMap::new(),
+            last_ts_idx_by_peer: HashMap::new(),
             msg_latency: LatencyStats::new(),
             msg_latency_total: 0,
             subscription,
@@ -36,25 +44,26 @@ impl PeerConsumer {
         }
     }
 
-    fn peek_next_idx(&self, peer_id: &PeerId) -> u32 {
-        let i = self.next_record_by_peer.get(peer_id);
-        i.unwrap_or(&0).clone()
+    // get timestamp of last record consumed, and expected next index
+    fn get_ts_idx(&self, peer_id: &PeerId) -> (u64, u32) {
+        let r = self.last_ts_idx_by_peer.get(peer_id);
+        r.unwrap_or(&(0,0)).clone()
     }
 
-    fn set_next_idx(&mut self, peer_id: PeerId, mut i: u32, max_i: u32) {
-        if i > max_i {
-            i = 0;
-        }
-        self.next_record_by_peer.insert(peer_id, i);
+    // set last timestamp and log index we consumed for this peer
+    fn set_consumed_ts_idx(&mut self, peer_id: PeerId, ts: u64, mut i: u32, max_i: u32) {
+        i = incr_wrap(i, max_i);
+        self.last_ts_idx_by_peer.insert(peer_id, (ts, i));
     }
 
     fn process_peer(&mut self, id: PeerId, pl: &PeerLog) {
         let now = system_time_usec();
-        let mut i = self.peek_next_idx(&id);
+        let (mut ts, mut i) = self.get_ts_idx(&id);
         debug!("--> process_peer {} w/ log len {}", id, pl.log.len());
         loop {
             let rec = pl.log.get(i.to_string().as_str());
-            if rec.is_none() {
+            if rec.is_none() || rec.unwrap().timestamp < ts {
+                // we either got no record, or have wrapped to an old one
                 break;
             }
             let r = rec.unwrap();
@@ -65,9 +74,10 @@ impl PeerConsumer {
             self.msg_latency.max_usec = cmp::max(self.msg_latency.max_usec, latency);
             self.msg_latency.avg_usec = self.msg_latency_total / self.msg_latency.num_events;
             debug!("--> got peer record {:?} w/ latency {}", r, latency);
-            i += 1;
+            i = incr_wrap(i, PEER_LOG_SIZE-1);
+            ts = r.timestamp
         }
-        self.set_next_idx(id, i, pl.max_log_size-1);
+        self.set_consumed_ts_idx(id, ts, i, PEER_LOG_SIZE-1);
     }
 
     fn process_peer_doc(&mut self, pdoc: &PeerDoc) {
@@ -82,7 +92,7 @@ impl PeerConsumer {
 
     pub fn get_message_latency(&self) -> LatencyStats {
         let mut stats = self.msg_latency.clone();
-        stats.distinct_peers = self.next_record_by_peer.len();
+        stats.distinct_peers = self.last_ts_idx_by_peer.len();
         stats
     }
 }
