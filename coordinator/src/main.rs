@@ -263,6 +263,12 @@ fn generate_plan(
         plan.peers.push(p.clone());
         peer_ids.push(p.peer_id.clone());
     }
+    if plan.peers.len() > 40 {
+        // delay test start at extreme scales
+        // XXX instead: add another peer state transition to "Ready to execute"
+        plan.start_time += 10_000;
+    }
+
     match conn_graph {
         GraphType::Complete => {
             plan.connections = complete_graph(&peer_ids);

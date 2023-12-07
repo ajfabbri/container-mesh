@@ -8,8 +8,6 @@ use std::time::Duration;
 
 pub use crate::default;
 
-use self::default::PEER_LOG_SIZE;
-
 pub type PeerId = String;
 
 pub fn random_peer_id(prefix: Option<&str>) -> PeerId {
@@ -181,16 +179,12 @@ pub struct PeerRecord {
 // Bounded-size log of peer records
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PeerLog {
-    pub last_index: i32,        // Last index written, or -1 when empty
-    pub max_log_size: u32,      // Max size of log
     pub log: HashMap<String, PeerRecord>,
 }
 
 impl PeerLog {
     pub fn new() -> Self {
         Self {
-            last_index: -1,
-            max_log_size: PEER_LOG_SIZE,
             log: HashMap::new(),
         }
     }
