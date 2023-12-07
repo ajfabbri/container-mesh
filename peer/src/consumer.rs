@@ -15,7 +15,7 @@ use dittolive_ditto::prelude::*;
 
 pub struct PeerConsumer {
     local_id: PeerId,
-    next_record_by_peer: HashMap<PeerId, usize>,
+    next_record_by_peer: HashMap<PeerId, u32>,
     msg_latency: LatencyStats,
     msg_latency_total: u64,
     // To keep subscription alive as needed
@@ -36,21 +36,24 @@ impl PeerConsumer {
         }
     }
 
-    fn peek_next_idx(&self, peer_id: &PeerId) -> usize {
+    fn peek_next_idx(&self, peer_id: &PeerId) -> u32 {
         let i = self.next_record_by_peer.get(peer_id);
         i.unwrap_or(&0).clone()
     }
 
-    fn set_next_idx(&mut self, peer_id: PeerId, i: usize) {
+    fn set_next_idx(&mut self, peer_id: PeerId, mut i: u32, max_i: u32) {
+        if i > max_i {
+            i = 0;
+        }
         self.next_record_by_peer.insert(peer_id, i);
     }
 
-    fn process_peer(&mut self, id: PeerId, log: &HashMap<String, PeerRecord>) {
+    fn process_peer(&mut self, id: PeerId, pl: &PeerLog) {
         let now = system_time_usec();
         let mut i = self.peek_next_idx(&id);
-        debug!("--> process_peer {} w/ log len {}", id, log.len());
+        debug!("--> process_peer {} w/ log len {}", id, pl.log.len());
         loop {
-            let rec = log.get(i.to_string().as_str());
+            let rec = pl.log.get(i.to_string().as_str());
             if rec.is_none() {
                 break;
             }
@@ -64,7 +67,7 @@ impl PeerConsumer {
             debug!("--> got peer record {:?} w/ latency {}", r, latency);
             i += 1;
         }
-        self.set_next_idx(id, i);
+        self.set_next_idx(id, i, pl.max_log_size-1);
     }
 
     fn process_peer_doc(&mut self, pdoc: &PeerDoc) {
@@ -88,11 +91,8 @@ pub fn consumer_create_collection(pctx: &PeerContext) -> Result<Collection, Box<
     let store = pctx.ditto.store();
     let plan = pctx.get_plan().unwrap();
     let cc = store.collection(&plan.peer_collection_name)?;
-    let mylog: HashMap<String, PeerRecord> = HashMap::new();
-    let mut peer_logs = HashMap::new();
-    peer_logs.insert(pctx.id.clone(), mylog);
     let mut logs = HashMap::new();
-    logs.insert(pctx.id.clone(), HashMap::<String, PeerRecord>::new());
+    logs.insert(pctx.id.clone(), PeerLog::new());
 
     let doc = PeerDoc {
         _id: plan.peer_doc_id.clone(),

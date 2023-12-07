@@ -7,6 +7,7 @@ use crate::util;
 pub const HEARTBEAT_COLLECTION_NAME: &str = "cmesh-heartbeat";
 pub const REPORT_COLLECTION_NAME: &str = "cmesh-report";
 pub const PEER_COLLECTION_NAME: &str = "cmesh-peers";
+pub const PEER_LOG_SIZE: u32 = 16;
 pub const GRAPH_SPANNING_MAX_DEGREE: usize = 3;
 pub const GRAPH_LA_CLIQUE_SIZE: usize = 4;
 
