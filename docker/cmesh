@@ -7,7 +7,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # config
 ARCH=${ARCH:-x86_64-unknown-linux-gnu}
 FLAVOR=${FLAVOR:-debug}
-TEST_SECONDS=${TEST_SECONDS:-20}
+TEST_SECONDS=${TEST_SECONDS:-60}
 CONN_GRAPH_TYPE=${CONN_GRAPH_TYPE:-complete}
 RUST_LOG=${RUST_LOG:-info}
 

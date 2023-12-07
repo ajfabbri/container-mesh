@@ -3,6 +3,7 @@
 import glob
 import os.path
 import re
+import sys
 
 import matplotlib.pyplot as plt
 
@@ -43,9 +44,19 @@ def parse_test_output(results_dir: str) -> dict:
 
     return outd
 
-def main():
+def graph_type_color(type: str) -> str:
+    if type == 'complete':
+        return 'red'
+    elif type == 'spanning-tree':
+        return 'blue'
+    elif type == 'la-model':
+        return 'green'
+    else:
+        return 'black'
+
+def main(output_dir: str):
     # TODO cli param
-    data = parse_test_output("../perf-results/test-loop")
+    data = parse_test_output(output_dir)
     # plot a scatter chart with x axis as peer number, y axis as average
     # latency, and color corresponding to graph type
     fig, ax = plt.subplots()
@@ -59,15 +70,15 @@ def main():
                 num_peers += 1
                 x.append(int(peer))
                 y.append(int(data[graph_type][iteration][peer]['avg_usec']))
-        ax.scatter(x, y, label=graph_type)
+        ax.scatter(x, y, label=graph_type, color=graph_type_color(graph_type))
     ax.set_xlabel('Peer Number')
     ax.set_ylabel('Average Latency (usec)')
     ax.legend()
     # save to png
     plt.title(f"Avg. latency w/ {num_peers} peers")
-    fig.savefig('avg-latency.png')
+    fig.savefig(f"avg-latency-{num_peers}p.png")
 
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1])

@@ -10,7 +10,7 @@ export RUST_LOG=warning
 # Automated iterations of container mesh tests.
 
 SCALE=${SCALE:-20}
-ITERATIONS=${ITERATIONS:-2}
+ITERATIONS=${ITERATIONS:-10}
 OUT_DIR=${OUT_DIR:-perf-results/test-loop}
 
 OUT_DIR="$OUT_DIR$(date +%Y%m%d-%H%M%S)"
