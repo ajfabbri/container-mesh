@@ -1,0 +1,8 @@
+*/build/
+*/deps/
+*/incremental/
+target/*/deps
+.git/
+perf-results
+perf-profiling
+scripts/venv
