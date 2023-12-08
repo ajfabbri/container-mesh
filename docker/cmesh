@@ -126,7 +126,13 @@ do_run() {
 do_stop() {
     stop_peers || true
     stop_coord || true
-    docker network rm -f mesh
+    # This will fail sometimes even if there are no containers.
+    # For now, restart docker when this happens.
+    if ! docker network rm -f mesh ]; then
+        echo "Warning: docker network is stuck, restarting docker"
+        sudo systemctl restart docker
+        sleep 1
+    fi
 }
 
 do_build() {
