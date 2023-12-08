@@ -31,8 +31,8 @@ impl Default for ExecutionPlan {
             report_collection_name: REPORT_COLLECTION_NAME.to_string(),
             peer_collection_name: PEER_COLLECTION_NAME.to_string(),
             peer_doc_id: DocumentId::from(some_id.as_bytes()),
-            min_msg_delay_msec: 10,
-            max_msg_delay_msec: 500,
+            min_msg_delay_msec: 900,
+            max_msg_delay_msec: 1100,
             peers: Vec::new(),
             connections: PeerGraph::new(),
         }
