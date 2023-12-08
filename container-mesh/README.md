@@ -116,7 +116,42 @@ limit.
 
 ### Running in Your Environment
 
-You may need to increase some system limits to run a large number of containers.
+#### Increasing OS Limits
+*You will probably need to increase some system limits to run a large number of containers.*
+
+
+##### ARP Cache Blowout
+Once you start running a large number of containers, you may notice dmesg errors like this:
+
+```
+[5952197.195797] neighbour: arp_cache: neighbor table overflow!
+
+```
+
+Increase the following values, e.g.
+
+```
+sudo -e /etc/systcl.conf
+
+# add these lines
+net.ipv4.neigh.default.gc_thresh1 = 2048
+net.ipv4.neigh.default.gc_thresh2 = 4096
+net.ipv4.neigh.default.gc_thresh3 = 8192
+```
+
+Then apply the values: `sudo sysctl -p`
+
+Note: For 100+ containers on a single host, you may need to double these values
+again. If you have plenty of memory, try this:
+
+```
+net.ipv4.neigh.default.gc_thresh1 = 4096
+net.ipv4.neigh.default.gc_thresh2 = 8191
+net.ipv4.neigh.default.gc_thresh3 = 16384
+```
+
+
+##### If you use journald logging for Docker:
 
 I use journald logging for docker, so I can read logs after containers
 terminate for debugging. This required me to increase max inotify instances to
@@ -124,12 +159,7 @@ get around this error:
 
 _journald: error initializing inotify watches: too many open files_
 
-
-```
- echo 512 | sudo tee /proc/sys/fs/inotify/max_user_instances
-```
-
-To make this persist via /etc/sysctl.conf:
+Increase this value in your `sysctl.conf` as above:
 
 ```
 fs.inotify.max_user_instances = 512
