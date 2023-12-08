@@ -13,7 +13,7 @@ serde_cbor = { version = "0.11.1" }
 chrono = { version = "0.4.31" }
 rand = { version = "0.8.5" }
 
-dittolive-ditto.path = "../../ditto/rust/dittolive-ditto"
+dittolive-ditto.path = "../../../ditto/rust/dittolive-ditto"
 env_logger = "0.10.1"
 log = "0.4.20"
 #dittolive-ditto = { version = "4.4.2" }
