@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import glob
 import os.path
 import re
 from typing import NamedTuple, Dict, Tuple, List
@@ -115,7 +114,8 @@ def scatter_by_peer(data: Dict[str, Dict[str, List[dict]]], output_dir: str, inf
                 x.append(int(peer))
                 y.append(int(iteration['avg_usec']))
         #type: ignore
-        ax.scatter(x, y, label=graph_type, color=graph_type_color(graph_type))
+        s = [5 for _ in x]
+        ax.scatter(x, y, s=s, label=graph_type, color=graph_type_color(graph_type))
     ax.set_xlabel('Peer Number')
     ax.set_ylabel('Average Latency (usec)')
     ax.legend()
@@ -125,14 +125,28 @@ def scatter_by_peer(data: Dict[str, Dict[str, List[dict]]], output_dir: str, inf
     fig.savefig(fname) #type: ignore
 
 def events_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], output_dir: str):
+    average_by_scale(tests, 'num_events', 'Records read / second / peer',
+                     True, output_dir)
+
+def min_latency_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], output_dir: str):
+    average_by_scale(tests, 'min_usec', "Min latency", False, output_dir, log_y=True)
+
+def max_latency_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], output_dir: str):
+    average_by_scale(tests, 'max_usec', "Max latency", False, output_dir)
+
+def avg_latency_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], output_dir: str):
+    average_by_scale(tests, 'avg_usec', "Average latency", False, output_dir)
+
+def average_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], field_name,
+                     y_description: str, per_second: bool, output_dir: str, log_y=False):
     # plot line graph of messages processed per second vs scale
     fig, _ax = plt.subplots()
     ax: plt.Axes = _ax  # type: ignore
 
     # set of x and y values for each graph type
-    # y value is average events per second over all peers, over all iterations
+    # y value is average statistic per second over all peers, over all iterations
     x_scale: Dict[str, List[int]] = {}
-    y_events: Dict[str, List[float]] = {}
+    y_stat: Dict[str, List[float]] = {}
     count = duration = 0
     for test_dir, (info, data) in tests.items():
         if count == 0:
@@ -143,30 +157,34 @@ def events_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], output_dir: str):
         for graph_type, peer_map in data.items():
             if x_scale.get(graph_type) is None:
                 x_scale[graph_type] = []
-                y_events[graph_type] = []
+                y_stat[graph_type] = []
             x_scale[graph_type].append(info.scale)
-            total_events = 0
+            total_stat = 0
             for peer_id, iterations in peer_map.items():
                 for iteration in iterations:
-                    total_events += int(iteration['num_events'])
+                    total_stat += int(iteration[field_name])
                 if info.iterations != len(iterations):
                     warn_once(f"{test_dir} peer {peer_id} has {len(iterations)} iterations, expected {info.iterations}")
-                total_events /= info.iterations
-            total_events /= len(peer_map.keys()) # average over peers
-            y_events[graph_type].append(total_events / float(info.duration_sec))
+            total_stat /= info.iterations
+            total_stat /= float(len(peer_map.keys())) # average over peers
+            if per_second:
+                total_stat /= float(info.duration_sec)
+            y_stat[graph_type].append(total_stat)
 
     for graph_type in x_scale:
         xs = x_scale[graph_type]
-        ys = y_events[graph_type]
+        ys = y_stat[graph_type]
         # sort points by x value
         xs, ys = zip(*sorted(zip(xs, ys)))
         #type: ignore
         ax.plot(xs, ys, label=graph_type, color=graph_type_color(graph_type))
         ax.set_xlabel('Scale')
-        ax.set_ylabel('Records read / second / peer')
+        ax.set_ylabel(y_description + (" (log)" if log_y else ""))
         ax.legend()
-        plt.title(f"Events/sec vs Num peers, {count} iter. of {duration} sec.")
-        fname = os.path.join(output_dir, f"events-scale-{count}i-{duration}s.png")
+        plt.ylim(bottom=1.0 if log_y else 0.0)
+        plt.yscale('log' if log_y else 'linear')
+        plt.title(f"{field_name} vs Num peers, mean over {count} iter. of {duration} sec.")
+        fname = os.path.join(output_dir, f"{field_name}-scale-{count}i-{duration}s.png")
         fig.savefig(fname) #type: ignore
 
 def main():
@@ -184,6 +202,9 @@ def main():
     # other graph ideas:
     # messages processed per second per vs scale
     events_by_scale(tests, args.output_dir)
+    min_latency_by_scale(tests, args.output_dir)
+    max_latency_by_scale(tests, args.output_dir)
+    avg_latency_by_scale(tests, args.output_dir)
 
     # min/max/avg latency vs scale
     #latency_by_scale(data, args.output_dir, info)
