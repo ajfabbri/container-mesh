@@ -82,6 +82,38 @@ docker/cmesh cat    # output all test results to stdout
 docker/cmesh rm     # delete all test reports
 ```
 
+#### Automated Iteration and Graph Plotting
+
+There is a helper script that will run multiple iterations of the test and
+collect output, which should allow you to do long-running tests, `test-loop.sh`.
+A typical run looks like this:
+
+```
+for scale in 40 45 50 55; do ITERATIONS=5 SCALE=$scale scripts/test-loop.sh ; done
+
+```
+
+An hour or two later (depending on your args above):
+
+
+```
+cd perf-results
+mkdir Graphs
+../scripts/plot-results.py -o Graphs .
+```
+
+Some example graphs: First we have a plot of average update latency versus scale (number of peers). These are mean values reported by each peer, averaged over all peers and over all test iterations.
+
+![Average update latency vs. number of peers](img/avg_usec-scale-5i-60s.png)
+
+The second graph is a scatter plot which shows mean latency results reported by
+each peer (x axis). Note the couple of red dots at the bottom; these zero
+values indicate a failure, and are usually a sign that you've reached a scaling
+limit.
+
+![Scatter plot of avg. latency by peer](img/sc-avg-latency-40p-5i-60s.png)
+
+
 ### Running in Your Environment
 
 You may need to increase some system limits to run a large number of containers.
