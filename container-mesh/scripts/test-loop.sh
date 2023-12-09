@@ -25,8 +25,16 @@ if [ -n "$(ls -A $OUT_DIR)" ]; then
     mkdir $OUT_DIR
 fi
 
-set -x
-cargo build --target $ARCH --release
+if [ $FLAVOR = "release" ]
+then
+    set -x
+    cargo build --target $ARCH --release
+    set +x
+else
+    set -x
+    cargo build --target $ARCH
+    set +x
+fi
 
 docker/cmesh build 2>&1 > perf-results/cmesh-build.log
 set +x
