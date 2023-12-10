@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 
 import argparse
+import math
 import os.path
 import re
-from typing import NamedTuple, Dict, Tuple, List
+from typing import NamedTuple, Dict, Tuple, List, Optional
 
 import matplotlib.pyplot as plt
+
+GRAPH_DPI = 300
+GRAPH_SIZE = (12, 10)
+MAKE_SCATTER_GIF = False
 
 # Slurp up all data-*.log files in results_dir then use matplotlib to make
 # pretty pictures.
@@ -36,9 +41,11 @@ def get_test_info(results_dir: str) -> TestInfo:
 # # peer9-report.json
 # PeerReport { message_latency: LatencyStats { num_events: 684, min_usec: 182130, max_usec: 2624592, avg_usec: 1017258, distinct_peers: 19 }, records_produced: 40 }
 
+TestOutput = Dict[str, Tuple[TestInfo, Dict]]
+
 # Returns a map of test_dir to (test_info, data_dict), where data_dict has path
 # graph_type -> peer -> [data], and each data dict has keys matched by data_re below
-def parse_test_output(results_dir: str) -> Dict[str, Tuple[TestInfo, Dict]]:
+def parse_test_output(results_dir: str) -> TestOutput:
     # one file per test run data-<graph_type>-<iteration>.log
     path_re = re.compile(r'.*data-(?P<graph_type>[^\.]+)-(?P<iteration>\d+).log')
     peer_re = re.compile(r'# peer(?P<peer>\d+)-report.json')
@@ -58,10 +65,10 @@ def parse_test_output(results_dir: str) -> Dict[str, Tuple[TestInfo, Dict]]:
     for test_dir, (info, files) in tests.items():
         testd = {}
         for f in files:
-            print("file: %s" % f)
+            print("# --> file: %s" % f)
             m = path_re.match(f)
             assert m
-            (graph_type, iteration_num) = m.groups()
+            (graph_type, _) = m.groups()
             if testd.get(graph_type) is None:
                 testd[graph_type] = {}
             with open(f, 'r') as f:
@@ -98,10 +105,33 @@ def graph_type_color(type: str) -> str:
     else:
         return 'black'
 
-def scatter_by_peer(data: Dict[str, Dict[str, List[dict]]], output_dir: str, info: TestInfo):
+def get_max_yval(stat_name: str, data: TestOutput):
+    global MAKE_SCATTER_GIF
+    max_y = 0
+    if MAKE_SCATTER_GIF:
+        # graph_type -> peer
+        for test_dir, (info, data) in data.items():
+            for graph_type, peer_map in data.items():
+                for peer_id, iterations in peer_map.items():
+                    for i in iterations:
+                        if int(i[stat_name]) > max_y:
+                            max_y = int(i[stat_name])
+    return max_y
+
+def usec_to_sec(usec: int) -> float:
+    return float(usec) / 1.0e6
+
+# returns filename of the graph crated
+def scatter_by_peer(data: Dict[str, Dict[str, List[dict]]], output_dir: str,
+                    info: TestInfo, max_y=None, log_y=False) -> str:
+    global MAKE_SCATTER_GIF
     # plot a scatter chart with x axis as peer number, y axis as average
     # latency, and color corresponding to graph type
-    fig, _ax = plt.subplots()
+
+    stat = 'avg_usec'
+    scatter_min_val = 1.1 if log_y else 0
+
+    fig, _ax = plt.subplots(figsize=GRAPH_SIZE, dpi=GRAPH_DPI)
     ax: plt.Axes = _ax  # type: ignore
     num_peers = -1
     for graph_type, peers in data.items():
@@ -112,17 +142,30 @@ def scatter_by_peer(data: Dict[str, Dict[str, List[dict]]], output_dir: str, inf
             num_peers += 1
             for iteration in iterations:
                 x.append(int(peer))
-                y.append(int(iteration['avg_usec']))
+                yval = int(iteration[stat])
+                yval = max(scatter_min_val, yval) if MAKE_SCATTER_GIF else yval
+                y.append(usec_to_sec(yval))
         #type: ignore
-        s = [5 for _ in x]
-        ax.scatter(x, y, s=s, label=graph_type, color=graph_type_color(graph_type))
+        # zero values indicate failures, enlarge them
+        y_to_size = lambda y: 20 if y < scatter_min_val else 5
+        dot_sizes = [y_to_size(val)*4 if MAKE_SCATTER_GIF else y_to_size(val) for val in y]
+        ax.scatter(x, y, s=dot_sizes, label=graph_type, color=graph_type_color(graph_type))
     ax.set_xlabel('Peer Number')
-    ax.set_ylabel('Average Latency (usec)')
-    ax.legend()
+    ax.set_ylabel('Average Latency (sec)')
+    if MAKE_SCATTER_GIF:
+        ax.set_ylim(0, max_y)
+        mag = math.ceil(math.log(num_peers, 10))
+        plt.xticks(range(0, num_peers, 10*mag//2))
+        plt.ylim(bottom=1.0 if log_y else 0.0)
+        plt.yscale('log' if log_y else 'linear')
+
+    if not MAKE_SCATTER_GIF:
+        ax.legend()
     # save to png
     plt.title(f"Avg. latency w/ {num_peers} peers, {info.iterations} iter. of {info.duration_sec} sec.")
-    fname = os.path.join(output_dir, f"sc-avg-latency-{num_peers}p-{info.iterations}i-{info.duration_sec}s.png")
+    fname = os.path.join(output_dir, f"sc-avg-latency-{num_peers:03d}p-{info.iterations}i-{info.duration_sec}s.png")
     fig.savefig(fname) #type: ignore
+    return fname
 
 def events_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], output_dir: str):
     average_by_scale(tests, 'num_events', 'Records read / second / peer',
@@ -140,7 +183,7 @@ def avg_latency_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], output_dir: st
 def average_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], field_name,
                      y_description: str, per_second: bool, output_dir: str, log_y=False):
     # plot line graph of messages processed per second vs scale
-    fig, _ax = plt.subplots()
+    fig, _ax = plt.subplots(figsize=GRAPH_SIZE, dpi=GRAPH_DPI)
     ax: plt.Axes = _ax  # type: ignore
 
     # set of x and y values for each graph type
@@ -188,16 +231,41 @@ def average_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], field_name,
         fig.savefig(fname) #type: ignore
 
 def main():
+    global MAKE_SCATTER_GIF
     info = "Reads all data-*.log files in <results_dir> and outputs graphs to <output_dir>"
     parser = argparse.ArgumentParser(description="cmesh results graph plotter",
                                     epilog=info)
     parser.add_argument("-o", "--output-dir", help="output directory", default=".")
+    parser.add_argument("-g", "--gif", action="store_true", help="make scatter gif")
     parser.add_argument('results_dir', type=str, help="directory containing data-*.log files")
     args=parser.parse_args()
+    if args.gif:
+        MAKE_SCATTER_GIF = True
 
     tests = parse_test_output(args.results_dir)
+    max_y : Optional[int] = None
+    log_y = False
+    if MAKE_SCATTER_GIF:
+        max_y = math.ceil(usec_to_sec(get_max_yval('avg_usec', tests)))
+        print(f"# --> using fixed y range (max {max_y})")
+        #log_y = True
+
+    scatter_filenames = []
     for _, (info, data) in tests.items():
-        scatter_by_peer(data, args.output_dir, info)
+        scatter_filenames.append(scatter_by_peer(data, args.output_dir, info, max_y=max_y, log_y=log_y))
+    scatter_filenames.sort()
+
+    # make a gif
+    if MAKE_SCATTER_GIF:
+        import imageio
+        images = []
+        base_dir = None
+        for filename in scatter_filenames:
+            images.append(imageio.imread(filename))
+            if not base_dir:
+                base_dir = os.path.dirname(filename)
+        imageio.mimsave(os.path.join(base_dir or "./", 'peers-avg-lat.gif'), images, loop=0, fps=0.9)
+
 
     # other graph ideas:
     # messages processed per second per vs scale
