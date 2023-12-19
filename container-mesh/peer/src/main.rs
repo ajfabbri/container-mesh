@@ -1,5 +1,6 @@
 use clap::Parser;
 use common::types::*;
+use common::types::PeerState::*;
 use common::util::*;
 use dittolive_ditto::error::DittoError;
 use dittolive_ditto::prelude::*;
@@ -216,7 +217,7 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
     pctx.coord_info = init_info;
     let hb_record = Heartbeat {
         sender: Peer {
-            state: PeerState::Init,
+            state: Init,
             peer_id: pctx.id.clone(),
             peer_ip_addr: pctx.local_ip.clone(),
             peer_port: pctx.local_port,
@@ -332,7 +333,7 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
     info!("--> Waiting {} msec for start time", wait_time);
     std::thread::sleep(std::time::Duration::from_millis(wait_time as u64));
 
-    pctx.state_transition(Some(PeerState::Init), PeerState::Running)?;
+    pctx.state_transition(Some(Init), Running)?;
 
     // set up message processor that processes changes to peer collection
     let cc = consumer_create_collection(pctx)?;
@@ -358,7 +359,7 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
     producer_stop(&producer);
 
     let msg_count = _pthread.join().unwrap().unwrap();
-    pctx.state_transition(Some(PeerState::Running), PeerState::Reporting)?;
+    pctx.state_transition(Some(Running), Reporting)?;
 
     // Return test report
     let consumer = _consumer.lock().unwrap();
@@ -367,7 +368,7 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
         message_latency: consumer.get_message_latency(),
         records_produced: msg_count,
     };
-    pctx.state_transition(Some(PeerState::Reporting), PeerState::Shutdown)?;
+    pctx.state_transition(Some(Reporting), Shutdown)?;
     std::thread::sleep(std::time::Duration::from_secs(1));
     Ok(report)
 }
