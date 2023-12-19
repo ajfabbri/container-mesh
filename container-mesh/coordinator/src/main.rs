@@ -33,7 +33,7 @@ struct Cli {
     bind_addr: String,
 
     #[arg(short = 'p', long, default_value_t = 4001)]
-    bind_port: u32,
+    bind_port: u16,
 
     #[arg(short = 'g',
           long,

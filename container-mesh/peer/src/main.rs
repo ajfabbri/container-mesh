@@ -37,8 +37,8 @@ struct Cli {
     #[arg(short, long)]
     bind_addr: Option<String>,
 
-    #[arg(short = 'p', long)]
-    bind_port: Option<u16>,
+    #[arg(short = 'p', long, default_value_t = 4010)]
+    bind_port: u16,
 
     #[arg(short, long, default_value = "peer")]
     device_name: String,
@@ -75,7 +75,7 @@ fn init_transport(pctx: &mut PeerContext, cli: &Cli) -> Result<(), Box<dyn Error
     config.connect.websocket_urls = HashSet::new();
     config.listen.tcp.enabled = true;
     config.listen.tcp.interface_ip = pctx.local_ip.clone();
-    config.listen.tcp.port = cli.bind_port.unwrap_or(0);
+    config.listen.tcp.port = cli.bind_port;
     info!(
         "-> set transport config {}:{}",
         config.listen.tcp.interface_ip, config.listen.tcp.port
@@ -379,7 +379,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         &cli.device_name,
         make_ditto(&cli.device_name)?,
         resolve_local_ip(cli.bind_addr.clone()).as_str(),
-        cli.bind_port.unwrap(),
+        cli.bind_port,
     );
     debug!("Args {:?}", cli);
     bootstrap_peer(&mut pctx, &cli)?;
