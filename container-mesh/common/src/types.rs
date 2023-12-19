@@ -84,16 +84,18 @@ pub enum GraphType {
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum PeerState {
-    Init,
-    Running,
-    Reporting,
-    Shutdown,
+    Init,       // Alive, reporting to coord.
+    Ready,      // Have test plan, ready to execute
+    Running,    // Executing
+    Reporting,  // Finished test, outputting results
+    Shutdown,   // Done, exiting
 }
 
 impl Display for PeerState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
             PeerState::Init => "Init",
+            PeerState::Ready => "Ready",
             PeerState::Running => "Running",
             PeerState::Reporting => "Reporting",
             PeerState::Shutdown => "Shutdown",

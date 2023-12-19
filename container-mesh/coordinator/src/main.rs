@@ -121,15 +121,30 @@ fn upsert_coord_info(
 
 fn set_coord_info_plan(
     cc: &Collection,
-    cid: DocumentId,
-    plan: ExecutionPlan,
+    cid: &DocumentId,
+    plan: &ExecutionPlan,
 ) -> Result<(), DittoError> {
-    debug!("-> update_coord_info for {:?}: {:?}", cc.name(), plan);
+    debug!("-> set plan for {:?}: {:?}", cc.name(), plan);
     let _res = cc.find_by_id(cid).update(|mut_doc| {
         let mut_doc = mut_doc.unwrap();
         mut_doc
             .set("execution_plan", plan.clone())
             .expect("set execution_plan");
+    })?;
+    Ok(())
+}
+
+fn set_coord_info_plan_start(
+    cc: &Collection,
+    cid: &DocumentId,
+    start_time: u64,
+) -> Result<(), DittoError> {
+    debug!("-> set plan start {:?}: {:?}", cc.name(), start_time);
+    let _res = cc.find_by_id(cid).update(|mut_doc| {
+        let mut_doc = mut_doc.unwrap();
+        mut_doc
+            .set("execution_plan['start_time']", start_time)
+            .expect("set plan start");
     })?;
     Ok(())
 }
@@ -215,6 +230,7 @@ fn wait_for_quorum(
     wait_for_peer_state(ctx.hb_processor.as_ref().unwrap(), Init, min_peers)
 }
 
+// TODO a method on hbp?
 fn wait_for_peer_state(
     hbp: &HeartbeatProcessor,
     state: PeerState,
@@ -252,6 +268,16 @@ fn wait_for_peer_states(
     Ok(())
 }
 
+fn start_delay_secs(hbp: &HeartbeatProcessor) -> u64 {
+    let peers = hbp.peer_set.lock().unwrap();
+    let n: u64 = peers.len().try_into().unwrap();
+    let mut seconds: u64 = 10;
+    if n > 40 {
+        seconds += (n + 3) / 4;     // ceil(n/4) = (n+3)/4
+    }
+    seconds
+}
+
 fn generate_plan(
     ctx: &CoordinatorContext,
     duration_sec: u32,
@@ -263,11 +289,7 @@ fn generate_plan(
         plan.peers.push(p.clone());
         peer_ids.push(p.peer_id.clone());
     }
-    if plan.peers.len() > 40 {
-        // delay test start at extreme scales
-        // XXX instead: add another peer state transition to "Ready to execute"
-        plan.start_time += 10_000;
-    }
+    plan.start_time = 0;    // Start time not scheduled yet
 
     match conn_graph {
         GraphType::Complete => {
@@ -306,6 +328,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     info!("-> wait for quorum");
     wait_for_quorum(&mut ctx, &cli.coord_collection, cli.min_peers)?;
+
     info!("-> got quorum, writing test plan..");
     let plan = generate_plan(&ctx, cli.test_duration_sec, cli.connection_graph);
     debug!(
@@ -314,21 +337,24 @@ fn main() -> Result<(), Box<dyn Error>> {
             .to_query_compatible(StringPrimitiveFormat::WithoutQuotes),
         plan.peer_doc_id
     );
-    set_coord_info_plan(
-        ctx.coord_collection.as_ref().unwrap(),
-        ctx.coord_doc_id.unwrap(),
-        plan,
-    )?;
+
+    let ccollection = ctx.coord_collection.as_ref().unwrap();
+    let cdoc_id = ctx.coord_doc_id.as_ref().unwrap();
+    let hbp = ctx.hb_processor.as_ref().unwrap();
+    set_coord_info_plan(ccollection, cdoc_id, &plan)?;
+
+    info!("--> waiting for peers to be ready..");
+    wait_for_peer_state(hbp, Ready, cli.min_peers)?;
+
+    let start_in_sec = start_delay_secs(hbp);
+    info!("--> setting start time in {} seconds.", start_in_sec);
+    set_coord_info_plan_start(ccollection, cdoc_id, system_time_msec() + start_in_sec)?;
 
     info!("-> waiting for peers to start Running..");
-    wait_for_peer_state(ctx.hb_processor.as_ref().unwrap(), Running, cli.min_peers)?;
+    wait_for_peer_state(hbp, Running, cli.min_peers)?;
 
     info!("-> waiting for peers to finish running..");
-    wait_for_peer_states(
-        ctx.hb_processor.as_ref().unwrap(),
-        vec![Reporting, Shutdown],
-        cli.min_peers,
-    )?;
+    wait_for_peer_states(hbp, vec![Reporting, Shutdown], cli.min_peers)?;
 
     Ok(())
 }

@@ -1,6 +1,7 @@
 use clap::Parser;
-use common::types::*;
+use common::default::*;
 use common::types::PeerState::*;
+use common::types::*;
 use common::util::*;
 use dittolive_ditto::error::DittoError;
 use dittolive_ditto::prelude::*;
@@ -128,16 +129,13 @@ fn heartbeat_send(hctx: &mut HeartbeatCtx) {
     let hbc_lock = hctx.collection.lock().unwrap();
     hctx.record.update_timestamp();
     hctx.record.sender.state = hctx.state.lock().expect("lock hb ctx state").clone();
-    debug!("---> heartbeat_send: update");
+    debug!("---> heartbeat_send: update, state {}", hctx.record.sender.state);
     hbc_lock
         .find_by_id(hctx.doc_id.clone())
         .update(|mut_doc| {
             let mut_doc = mut_doc.unwrap();
-            mut_doc
-                .set(
-                    &vec!["beats", &hctx.peer_id.to_string()].join("."),
-                    hctx.record.clone(),
-                )
+            let path = format!("beats['{}']", &hctx.peer_id.to_string());
+            mut_doc.set(&path, hctx.record.clone())
                 .expect("mutate heartbeat doc");
         })
         .expect("update heartbeat doc");
@@ -161,11 +159,15 @@ fn heartbeat_loop(mut hctx: HeartbeatCtx) -> Result<(), std::io::Error> {
     // call heartbeat_send every second until done flag is set
     while !hctx.finished.load(std::sync::atomic::Ordering::Relaxed) {
         heartbeat_send(&mut hctx);
-        std::thread::sleep(std::time::Duration::from_secs(1));
+        std::thread::sleep(std::time::Duration::from_secs(HEARTBEAT_SEC));
     }
     Ok(())
 }
 
+// Uses coordinator collection to bootstrap:
+// - Starts heartbeat thread which reports current PeerState to coord.
+// - Waits for execution plan, updates state to Ready, waits for coord. to set start_time.
+// - Drops subscription to coordinator collection.
 fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dyn Error>> {
     // subscribe to coordinator collection
     info!(
@@ -212,7 +214,7 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
                 }
             }
         }
-        std::thread::sleep(std::time::Duration::from_secs(1));
+        std::thread::sleep(std::time::Duration::from_secs(QUERY_POLL_SEC));
     }
     pctx.coord_info = init_info;
     let hb_record = Heartbeat {
@@ -242,7 +244,7 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
             .exec()
             .expect("Expected to find heartbeat doc");
         if r.len() < 1 {
-            std::thread::sleep(std::time::Duration::from_secs(2));
+            std::thread::sleep(std::time::Duration::from_secs(QUERY_POLL_SEC));
         } else {
             if r.len() > 1 {
                 warn!("Multiple heartbeat docs, using first.");
@@ -265,7 +267,21 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
     pctx.hb_ctx = Some(hctx);
 
     // wait for execution plan
-    info!("--> Waiting for execution plan..");
+    wait_for_plan(pctx, &coord_coll, false)?;
+    // signal that we are ready to execute
+    pctx.state_transition(Some(Init), Ready)?;
+    // wait for test start time
+    wait_for_plan(pctx, &coord_coll, true)?;
+    Ok(())
+}
+
+fn wait_for_plan(
+    pctx: &mut PeerContext,
+    coord_coll: &Collection,
+    need_start: bool,
+) -> Result<(), Box<dyn Error>> {
+    // wait for execution plan
+    info!("--> Waiting for coord {}..", if need_start { "start time" } else { "execution plan" });
     loop {
         // XXX subscribe w/ callback instead of polling
         let doc_result = coord_coll
@@ -279,11 +295,14 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
             let coord_info = bd.typed::<CoordinatorInfo>()?;
             debug!("---> Got CoordinatorInfo: {:?}", coord_info);
             pctx.coord_info = Some(coord_info);
-            if pctx.coord_info.as_ref().unwrap().execution_plan.is_some() {
-                break;
+            let maybe_plan = pctx.coord_info.as_ref().unwrap().execution_plan.as_ref();
+            if maybe_plan.is_some() {
+                if !need_start || maybe_plan.unwrap().start_time != 0 {
+                    break;
+                }
             }
         }
-        std::thread::sleep(std::time::Duration::from_secs(1));
+        std::thread::sleep(std::time::Duration::from_secs(QUERY_POLL_SEC));
     }
 
     debug!("Got execution plan {:?}", pctx.coord_info);
@@ -323,17 +342,16 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
     let plan = pctx.get_plan().unwrap();
     let start_time = plan.start_time;
     let now = system_time_msec();
-    // XXX TODO can underflow
     let wait_time;
     if now > start_time {
-        wait_time = 0;
+        wait_time = 0;      // start time already passed
     } else {
         wait_time = start_time - now;
     }
     info!("--> Waiting {} msec for start time", wait_time);
     std::thread::sleep(std::time::Duration::from_millis(wait_time as u64));
 
-    pctx.state_transition(Some(Init), Running)?;
+    pctx.state_transition(Some(Ready), Running)?;
 
     // set up message processor that processes changes to peer collection
     let cc = consumer_create_collection(pctx)?;
@@ -369,7 +387,7 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
         records_produced: msg_count,
     };
     pctx.state_transition(Some(Reporting), Shutdown)?;
-    std::thread::sleep(std::time::Duration::from_secs(1));
+    std::thread::sleep(std::time::Duration::from_secs(REPORT_PROPAGATION_SEC));
     Ok(report)
 }
 

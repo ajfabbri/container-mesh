@@ -10,6 +10,10 @@ pub const PEER_COLLECTION_NAME: &str = "cmesh-peers";
 pub const PEER_LOG_SIZE: u32 = 16;
 pub const GRAPH_SPANNING_MAX_DEGREE: usize = 3;
 pub const GRAPH_LA_CLIQUE_SIZE: usize = 4;
+pub const QUERY_POLL_SEC: u64 = 2;  // peer delay between polling for coord. info
+pub const REPORT_PROPAGATION_SEC: u64 = 2;  // peer wait before shutting down
+pub const HEARTBEAT_SEC: u64 = 2; // peer delay between heartbeat writes
+
 
 impl Default for CoordinatorInfo {
     fn default() -> Self {
