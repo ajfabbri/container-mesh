@@ -394,6 +394,9 @@ fn run_test(pctx: &mut PeerContext) -> Result<PeerReport, Box<dyn Error>> {
 fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+
+    // Fail fast if output directory doesn't exist
+    let _ = std::fs::read_dir(&cli.output_dir).expect("Exiting: output dir not found.");
     let mut pctx = PeerContext::new(
         &cli.device_name,
         make_ditto(&cli.device_name)?,
