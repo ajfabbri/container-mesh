@@ -103,7 +103,7 @@ impl HeartbeatProcessor {
         for (_peer_id, hb) in hbd.beats {
             debug!("--> got heartbeat {:?}", hb);
             let mut peer_set = self.peer_set.lock().unwrap();
-            peer_set.insert(hb.sender);
+            peer_set.replace(hb.sender);
             trace!("--> peer set: {:?}", peer_set);
             self.added.notify_all();
         }
