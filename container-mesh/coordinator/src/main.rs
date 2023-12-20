@@ -1,5 +1,5 @@
-use clap::ValueEnum;
 use clap::Parser;
+use clap::ValueEnum;
 use common::default::*;
 use common::graph::*;
 use common::types::PeerState::*;
@@ -280,7 +280,7 @@ fn start_delay_secs(hbp: &HeartbeatProcessor) -> u64 {
     let n: u64 = peers.len().try_into().unwrap();
     let mut seconds: u64 = 10;
     if n > 40 {
-        seconds += (n + 3) / 4;     // ceil(n/4) = (n+3)/4
+        seconds += (n + 3) / 4; // ceil(n/4) = (n+3)/4
     }
     seconds
 }
@@ -296,7 +296,7 @@ fn generate_plan(
         plan.peers.push(p.clone());
         peer_ids.push(p.peer_id.clone());
     }
-    plan.start_time = 0;    // Start time not scheduled yet
+    plan.start_time = 0; // Start time not scheduled yet
 
     match conn_graph {
         GraphType::Complete => {
@@ -361,8 +361,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     wait_for_peer_state(hbp, Running, cli.min_peers)?;
 
     info!("--> writing connection graph to conn-graph.dot");
-    let dot_outfile =
-        Path::new(&cli.output_dir).join(format!("conn-graph-{}.dot", &cli.connection_graph.to_possible_value().unwrap().get_name()));
+    let dot_outfile = Path::new(&cli.output_dir).join(format!(
+        "conn-graph-{}-{}.dot",
+        &cli.connection_graph.to_possible_value().unwrap().get_name(),
+        cli.min_peers
+
+    ));
     File::create(dot_outfile)
         .unwrap()
         .write_all(plan.connections.to_dot().as_bytes())
