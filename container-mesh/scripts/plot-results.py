@@ -3,6 +3,7 @@
 import argparse
 import math
 import os.path
+import pathlib
 import re
 from typing import NamedTuple, Dict, Tuple, List, Optional
 
@@ -230,6 +231,22 @@ def average_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], field_name,
         fname = os.path.join(output_dir, f"{field_name}-scale-{count}i-{duration}s.png")
         fig.savefig(fname) #type: ignore
 
+def process_dot_files(results_dir: str) -> None:
+    import pydot
+    dot_files = pathlib.Path(results_dir).rglob('*.dot')
+    for df in dot_files:
+        # plot .svg of connection graph from .dot file
+        out_dir = os.path.dirname(df)
+        out_file = os.path.basename(df)
+        try:
+            (graph,) = pydot.graph_from_dot_file(df)
+        except Exception as e:
+            print("Failed to process dot file. Is graphviz installed?")
+            raise e
+        svg_filename = os.path.join(out_dir, str(out_file)[:-4] + '.svg')
+        graph.write_svg(svg_filename)
+        print(f"--> wrote {svg_filename}")
+
 def main():
     global MAKE_SCATTER_GIF
     info = "Reads all data-*.log files in <results_dir> and outputs graphs to <output_dir>"
@@ -237,6 +254,7 @@ def main():
                                     epilog=info)
     parser.add_argument("-o", "--output-dir", help="output directory", default=".")
     parser.add_argument("-g", "--gif", action="store_true", help="make scatter gif")
+    parser.add_argument("-d", "--process-dot", action="store_true", help="Process any .dot files found")
     parser.add_argument('results_dir', type=str, help="directory containing data-*.log files")
     args=parser.parse_args()
     if args.gif:
@@ -274,8 +292,8 @@ def main():
     max_latency_by_scale(tests, args.output_dir)
     avg_latency_by_scale(tests, args.output_dir)
 
-    # min/max/avg latency vs scale
-    #latency_by_scale(data, args.output_dir, info)
+    if args.process_dot:
+        process_dot_files(args.results_dir)
 
 
 if __name__ == "__main__":
