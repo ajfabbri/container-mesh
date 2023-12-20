@@ -12,6 +12,8 @@ export RUST_LOG=warning
 SCALE=${SCALE:-20}
 ITERATIONS=${ITERATIONS:-4}
 OUT_DIR=${OUT_DIR:-perf-results/test-loop}
+# complete connection graphs don't scale, stop trying past this number of peers
+COMPLETE_MAX_SCALE=${COMPLETE_MAX_SCALE:-100}
 
 OUT_DIR="$OUT_DIR-$SCALE-$(date +%Y%m%d-%H%M%S)"
 if [ ! -d $OUT_DIR ]; then
@@ -43,6 +45,10 @@ INFOLOG=$OUT_DIR/test_info.log
 echo "Test started $(date)" | tee $INFOLOG
 echo "scale $SCALE, iterations $ITERATIONS" | tee -a $INFOLOG
 for graph_type in "complete" "spanning-tree" "la-model"; do
+    if [ $graph_type = "complete" ] && [ $SCALE -gt $COMPLETE_MAX_SCALE ]; then
+        echo "*** Skipping complete graph at scale $SCALE ***"
+        continue
+    fi
     for i in $(seq 1 $ITERATIONS); do
         set -x
         docker/cmesh stop
