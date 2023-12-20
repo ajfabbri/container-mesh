@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 GRAPH_DPI = 300
 GRAPH_SIZE = (12, 10)
 MAKE_SCATTER_GIF = False
+MAX_DOT_GRAPH_SIZE = 1000
 
 # Slurp up all data-*.log files in results_dir then use matplotlib to make
 # pretty pictures.
@@ -231,21 +232,44 @@ def average_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], field_name,
         fname = os.path.join(output_dir, f"{field_name}-scale-{count}i-{duration}s.png")
         fig.savefig(fname) #type: ignore
 
-def process_dot_files(results_dir: str) -> None:
+def num_lines_in_file(filename: pathlib.Path) -> int:
+    with open(filename, 'r') as f:
+        return len(f.readlines())
+
+# plot .svg of connection graph from .dot file
+def render_dot(df: str, out_dir: str) -> None:
     import pydot
+    out_dir = os.path.dirname(df)
+    out_file = os.path.basename(df)
+    try:
+        (graph,) = pydot.graph_from_dot_file(df)
+    except Exception as e:
+        print("Failed to process dot file. Is graphviz installed?")
+        raise e
+    svg_filename = os.path.join(out_dir, str(out_file)[:-4] + '.svg')
+    graph.write_svg(svg_filename)
+    print(f"--> wrote {svg_filename}")
+
+def process_dot_files(results_dir: str) -> None:
+    import multiprocessing
     dot_files = pathlib.Path(results_dir).rglob('*.dot')
+    processes = []
     for df in dot_files:
-        # plot .svg of connection graph from .dot file
-        out_dir = os.path.dirname(df)
-        out_file = os.path.basename(df)
-        try:
-            (graph,) = pydot.graph_from_dot_file(df)
-        except Exception as e:
-            print("Failed to process dot file. Is graphviz installed?")
-            raise e
-        svg_filename = os.path.join(out_dir, str(out_file)[:-4] + '.svg')
-        graph.write_svg(svg_filename)
-        print(f"--> wrote {svg_filename}")
+
+        # Skip graphs with many edges. There are some exponential algorithms in
+        # dot / graphviz apparently, as graphs with many edges tend to take forever
+        if num_lines_in_file(df) > MAX_DOT_GRAPH_SIZE:
+            print(f"--> ! Skipping {df}, too big for graphviz.");
+            continue
+
+        # render dot files in parallel
+        p = multiprocessing.Process(target=render_dot, args=(df, results_dir))
+        p.start()
+        processes.append(p)
+
+    # wait for all children to finish
+    for p in processes:
+        p.join()
 
 def main():
     global MAKE_SCATTER_GIF
