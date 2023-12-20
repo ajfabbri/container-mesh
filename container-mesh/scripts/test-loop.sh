@@ -10,10 +10,10 @@ export RUST_LOG=warning
 # Automated iterations of container mesh tests.
 
 SCALE=${SCALE:-20}
-ITERATIONS=${ITERATIONS:-10}
+ITERATIONS=${ITERATIONS:-4}
 OUT_DIR=${OUT_DIR:-perf-results/test-loop}
 
-OUT_DIR="$OUT_DIR$(date +%Y%m%d-%H%M%S)"
+OUT_DIR="$OUT_DIR-$SCALE-$(date +%Y%m%d-%H%M%S)"
 if [ ! -d $OUT_DIR ]; then
     mkdir -p $OUT_DIR
 fi
