@@ -22,7 +22,11 @@ pub fn random_peer_id(prefix: Option<&str>) -> PeerId {
 
 // Assumes peer_id starts with "peer<num>_"
 pub fn short_peer_id(peer_id: &PeerId) -> String {
-    let num = peer_id.strip_prefix("peer");
+    short_peer_str(peer_id)
+}
+
+fn short_peer_str(peer_name: &str) -> String {
+    let num = peer_name.strip_prefix("peer");
     match num {
         Some(n) => n
             .split_once('_')
@@ -30,7 +34,7 @@ pub fn short_peer_id(peer_id: &PeerId) -> String {
             .0
             .to_string(),
         None => {
-            let mut pre = peer_id.clone();
+            let mut pre = peer_name.to_string();
             pre.truncate(4);
             pre
         }
@@ -66,7 +70,7 @@ impl PeerGraph {
         dot.push_str("digraph G {\n");
         for (u, v) in &self.nmap {
             for v in v {
-                dot.push_str(&format!("  {} -> {};\n", u, v));
+                dot.push_str(&format!("  {} -> {};\n", short_peer_str(u), short_peer_str(v)));
             }
         }
         dot.push_str("}\n");

@@ -19,7 +19,7 @@ SUBNET="10.1.0.0/16"
 GATEWAY="10.1.0.1"
 
 usage() {
-    echo "Usage: $0 build | stop | run <scale-factor> | clean | watch | ls | rm | cat | wait"
+    echo "Usage: $0 build | stop | run <scale-factor> | clean | watch | ls | rm | cat | cp-coord | wait"
     echo "  ARCH=$ARCH      FLAVOR=$FLAVOR"
     exit 1
 }
@@ -52,9 +52,11 @@ run_coord() {
     docker run --privileged \
       -d --rm --name cmesh-coord --label cmesh \
       --network=mesh --ip=$COORD_ADDR \
+      -v coord-output:/output \
       -e FLAVOR=$FLAVOR -e RUST_LOG=$RUST_LOG \
     cmesh-coord --bind-addr $COORD_ADDR --bind-port $COORD_PORT --min-peers $scale \
-      --test-duration-sec $TEST_SECONDS --connection-graph=$CONN_GRAPH_TYPE
+      --test-duration-sec $TEST_SECONDS --connection-graph=$CONN_GRAPH_TYPE \
+      --output-dir=/output
 
     set +x
 }
@@ -110,6 +112,14 @@ stop_peers() {
     fi
 }
 
+peer_out_dir() {
+    echo $(docker volume inspect peer-output | jq '.[0].Mountpoint' | tr -d '"')
+}
+
+coord_out_dir() {
+    echo $(docker volume inspect coord-output | jq '.[0].Mountpoint' | tr -d '"')
+}
+
 do_run() {
     local scale=$1
     # create bridge network "mesh"
@@ -119,8 +129,10 @@ do_run() {
       mesh
     run_coord $scale
     run_peers $scale
-    volpath=$(docker volume inspect peer-output -f '{{.Mountpoint}}')
+    volpath=$(peer_out_dir)
     echo "*** Peer output will be in $volpath ***"
+    volpath=$(coord_out_dir)
+    echo "*** Coordinator output will be in $volpath ***"
 }
 
 do_stop() {
@@ -165,6 +177,7 @@ do_clean() {
     # clean up docker disk space
     docker system prune -f
     docker volume rm peer-output || true
+    docker volume rm coord-output || true
 }
 
 get_rainbow_color() {
@@ -222,24 +235,37 @@ do_watch() {
 }
 
 do_ls() {
-    peer_output_fs=$(docker volume inspect peer-output | jq '.[0].Mountpoint' | tr -d '"')
-    echo "Listing output dir: $peer_output_fs"
+    peer_output_fs=$(peer_out_dir)
+    echo "Listing peer output dir: $peer_output_fs"
     sudo ls -l $peer_output_fs
+    coord_output_fs=$(coord_out_dir)
+    echo "Listing coord output dir: $coord_output_fs"
+    sudo ls -l $coord_output_fs
 }
 
 do_rm() {
-    peer_output_fs=$(docker volume inspect peer-output | jq '.[0].Mountpoint' | tr -d '"')
+    peer_output_fs=$(peer_out_dir)
     echo "Clearing output dir: $peer_output_fs"
     sudo sh -c "rm $peer_output_fs/* || true"
+    coord_output_fs=$(coord_out_dir)
+    echo "Clearing output dir: $coord_output_fs"
+    sudo sh -c "rm $coord_output_fs/* || true"
 }
 
 do_cat() {
-    peer_output_fs=$(docker volume inspect peer-output | jq '.[0].Mountpoint' | tr -d '"')
+    peer_output_fs=$(peer_out_dir)
     for f in $(sudo ls -1 $peer_output_fs); do
         echo "# $f"
         sudo cat $peer_output_fs/$f
         echo
     done
+}
+
+do_cp_coord() {
+    out_dir=$1
+    coord_output_fs=$(coord_out_dir)
+    mkdir -p $out_dir
+    sudo sh -c "cp $coord_output_fs/* $out_dir"
 }
 
 do_wait() {
@@ -295,6 +321,11 @@ while [[ $# -gt 0 ]]; do
       MODE=cat
       shift # past argument
       ;;
+    cp-coord)
+      MODE=cp-coord
+      OUT_DIR=$2
+      shift; shift
+      ;;
     wait)
       MODE=wait
       shift # past argument
@@ -330,6 +361,8 @@ elif [[ $MODE == "rm" ]]; then
     do_rm
 elif [[ $MODE == "cat" ]]; then
     do_cat
+elif [[ $MODE == "cp-coord" ]]; then
+    do_cp_coord $OUT_DIR
 elif [[ $MODE == "wait" ]]; then
     do_wait
 fi

@@ -1,3 +1,4 @@
+use clap::ValueEnum;
 use clap::Parser;
 use common::default::*;
 use common::graph::*;
@@ -10,6 +11,9 @@ use env_logger::Env;
 use log::*;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
 use std::sync::{Arc, Condvar, Mutex};
 
 #[derive(Parser, Debug)]
@@ -41,6 +45,9 @@ struct Cli {
           default_value_t = GraphType::Complete,
           default_missing_value="complete", value_enum)]
     connection_graph: GraphType,
+
+    #[arg(short, long, default_value = "/output")]
+    output_dir: String,
 }
 
 struct CoordinatorContext {
@@ -352,6 +359,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     info!("-> waiting for peers to start Running..");
     wait_for_peer_state(hbp, Running, cli.min_peers)?;
+
+    info!("--> writing connection graph to conn-graph.dot");
+    let dot_outfile =
+        Path::new(&cli.output_dir).join(format!("conn-graph-{}.dot", &cli.connection_graph.to_possible_value().unwrap().get_name()));
+    File::create(dot_outfile)
+        .unwrap()
+        .write_all(plan.connections.to_dot().as_bytes())
+        .unwrap();
 
     info!("-> waiting for peers to finish running..");
     wait_for_peer_states(hbp, vec![Reporting, Shutdown], cli.min_peers)?;
