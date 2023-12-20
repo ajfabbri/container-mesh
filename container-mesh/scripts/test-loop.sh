@@ -42,15 +42,16 @@ set +x
 INFOLOG=$OUT_DIR/test_info.log
 echo "Test started $(date)" | tee $INFOLOG
 echo "scale $SCALE, iterations $ITERATIONS" | tee -a $INFOLOG
-for graph_type in complete spanning-tree la-model; do
+for graph_type in "complete" "spanning-tree" "la-model"; do
     for i in $(seq 1 $ITERATIONS); do
         set -x
         docker/cmesh stop
         docker/cmesh rm
         set +x; echo "### Running: $graph_type iteration $i" | tee -a $INFOLOG; set -x
-        docker/cmesh run $SCALE $graph_type 2>&1 | tee -a $INFOLOG
+        CONN_GRAPH_TYPE=$graph_type docker/cmesh run $SCALE 2>&1 | tee -a $INFOLOG
         docker/cmesh wait
         docker/cmesh cat 2>&1 > $OUT_DIR/data-$graph_type-$i.log
+        docker/cmesh cp-coord $OUT_DIR
         set +x
     done
 done
