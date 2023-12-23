@@ -10,6 +10,9 @@ pub use crate::default;
 
 pub type PeerId = String;
 
+// Keep serialized types here up to date with ts/src/types.ts
+// TODO codegen
+
 pub fn random_peer_id(prefix: Option<&str>) -> PeerId {
     let pre;
     if prefix.is_none() {
