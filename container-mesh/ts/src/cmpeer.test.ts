@@ -1,11 +1,12 @@
-import { CmeshDitto, CmeshEvent } from './cmditto';
+import { CmeshPeer, CmeshEvent, PeerArgs, defaultPeerArgs } from './cmpeer';
 
 test('cmditto app lifecycle', async () => {
     let begin = false
     let end = false
     let exit = false
-    let cditto = new CmeshDitto()
-    let fut = cditto.start(async (event: CmeshEvent) => {
+    let pargs: PeerArgs = defaultPeerArgs
+    let cmpeer = new CmeshPeer(pargs)
+    let fut = cmpeer.start(async (event: CmeshEvent) => {
         switch (event) {
             case CmeshEvent.BeginTest:
                 console.log("BeginTest")

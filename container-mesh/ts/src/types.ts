@@ -5,7 +5,9 @@
 
 import { DocumentID } from "@dittolive/ditto";
 
+// ----------------------------------------
 // Types needed internally to this library to be a cmesh peer
+
 /** @internal */
 export type PeerId = String;
 
@@ -71,7 +73,33 @@ export interface PeerLog {
 
 /** @internal */
 export interface PeerDoc {
-    _id: DocumentID;
+    _id: DocumentID
     logs: Map<PeerId, PeerLog>
+}
+
+export class LatencyStats {
+    num_events: number
+    min_usec: number
+    max_usec: number
+    avg_usec: number
+    distinct_peers: number
+
+    constructor() {
+        this.num_events = 0
+        this.min_usec = 0
+        this.max_usec = 0
+        this.avg_usec = 0
+        this.distinct_peers = 0
+    }
+}
+
+export class PeerReport {
+    message_latency: LatencyStats
+    records_produced: number
+
+    constructor() {
+        this.message_latency = new LatencyStats()
+        this.records_produced = 0
+    }
 }
 

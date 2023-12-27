@@ -1,9 +1,18 @@
-import { CmeshDitto, CmeshEvent } from './cmditto';
+import { CmeshPeer, CmeshEvent, PeerArgs } from './cmpeer';
 
 // main function
 async function main() {
-    let cmditto = new CmeshDitto()
-    await cmditto.start(async (event: CmeshEvent) => {
+    // TODO from command line
+    let pargs: PeerArgs = {
+        coord_addr: "localhost",
+        coord_port: 4001,
+        peer_name: "ts-peer",
+        bind_addr: "localhost",
+        bind_port: 4010,
+        output_dir: "output"
+    }
+    let cmp = new CmeshPeer(pargs)
+    await cmp.start(async (event: CmeshEvent) => {
         switch (event) {
             case CmeshEvent.BeginTest:
                 console.log("BeginTest")
