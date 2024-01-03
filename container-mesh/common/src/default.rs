@@ -4,6 +4,7 @@ use dittolive_ditto::prelude::DocumentId;
 use crate::types::*;
 use crate::util;
 
+pub const COORD_COLLECTION_NAME: &str = "cmesh-coord";
 pub const HEARTBEAT_COLLECTION_NAME: &str = "cmesh-heartbeat";
 pub const REPORT_COLLECTION_NAME: &str = "cmesh-report";
 pub const PEER_COLLECTION_NAME: &str = "cmesh-peers";

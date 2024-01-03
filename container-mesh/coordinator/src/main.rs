@@ -18,7 +18,7 @@ use std::sync::{Arc, Condvar, Mutex};
 
 #[derive(Parser, Debug)]
 struct Cli {
-    #[arg(short, long, default_value = "container-mesh-coord")]
+    #[arg(short, long, default_value = COORD_COLLECTION_NAME)]
     coord_collection: String,
 
     #[arg(long, default_value_t = 1)]
