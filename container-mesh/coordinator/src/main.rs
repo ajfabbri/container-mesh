@@ -59,6 +59,7 @@ struct CoordinatorContext {
     hb_processor: Option<Arc<HeartbeatProcessor>>,
     hb_observer: Option<LiveQuery>,
     peers: Arc<Mutex<HashSet<Peer>>>,
+    presence: Option<PresenceObserver>,
 }
 
 fn make_ditto() -> Result<Ditto, DittoError> {
@@ -93,6 +94,11 @@ fn init_transport(ctx: &mut CoordinatorContext, cli: &Cli) -> Result<(), Box<dyn
     );
     debug!("-> config: {:?}", config);
     ctx.ditto.set_transport_config(config);
+    if log_enabled!(Level::Debug) {
+        ctx.presence = Some(ctx.ditto.presence().observe(|pgraph| {
+            debug!("--> presence update: {}", concise_presence(pgraph));
+        }));
+    }
     Ok(())
 }
 
@@ -318,6 +324,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     debug!("Args {:?}", cli);
+    // Fail fast if output directory doesn't exist
+    let _ = std::fs::read_dir(&cli.output_dir).expect("Exiting: output dir not found.");
     let mut ctx = CoordinatorContext {
         ditto: make_ditto()?,
         coord_collection: None,
@@ -327,6 +335,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         hb_processor: None,
         hb_observer: None,
         peers: Arc::new(Mutex::new(HashSet::new())),
+        presence: None,
     };
     debug!("-> init ditto");
     init_transport(&mut ctx, &cli)?;

@@ -122,7 +122,7 @@ pub struct Peer {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Heartbeat {
     pub sender: Peer,
-    pub sent_at_usec: u64,
+    pub sent_at_usec: u64,  // TODO use msec
 }
 
 impl PartialEq for Peer {
