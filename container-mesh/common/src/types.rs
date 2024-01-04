@@ -89,7 +89,7 @@ pub enum GraphType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
-#[serde(tag = "type")]
+#[serde(rename_all = "PascalCase")]
 pub enum PeerState {
     Init,       // Alive, reporting to coord.
     Ready,      // Have test plan, ready to execute
