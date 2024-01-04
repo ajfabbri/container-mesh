@@ -47,9 +47,9 @@ export interface HeartbeatsDoc {
 
 /** @internal */
 export interface CoordinatorInfo {
-    heartbeat_collection_name: string;
-    heartbeat_interval_sec: number;
-    executionPlan?: ExecutionPlan;
+    heartbeatCollectionName: string
+    heartbeatIntervalSec: number
+    executionPlan: ExecutionPlan | null
 }
 
 /** @internal */
@@ -75,6 +75,12 @@ export interface PeerLog {
 export interface PeerDoc {
     _id: DocumentID
     logs: Map<PeerId, PeerLog>
+}
+
+/** @internal */
+export interface Heartbeat {
+    sender: Peer
+    sent_at_usec: number
 }
 
 export class LatencyStats {
