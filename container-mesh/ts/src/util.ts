@@ -1,3 +1,4 @@
+import { existsSync, rm } from 'node:fs'
 import { Ditto, IdentityOfflinePlayground } from "@dittolive/ditto"
 
 export function random_peer_id(peer_name: string): string {
@@ -17,5 +18,17 @@ export function make_ditto(): Ditto {
     }
     // TODO make configurable
     const persist_dir = "/tmp/ditto"
+    // Remove existing persisted data
+    if (existsSync(persist_dir)) {
+        console.log(`Removing existing Ditto data in ${persist_dir}`)
+        rm(persist_dir, {recursive: true})
+    }
     return new Ditto(identity, persist_dir)
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function stringify(obj: any): string {
+    return JSON.stringify(obj, (_k,v) => {
+        typeof v === "bigint" ? v.toString() : v
+    })
 }

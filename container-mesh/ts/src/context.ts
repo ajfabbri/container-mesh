@@ -1,10 +1,6 @@
 import { Ditto, DocumentID, TransportConfig } from "@dittolive/ditto"
-import { CoordinatorInfo, Peer, PeerId } from "./types"
+import { CoordinatorInfo, PeerId, PeerState, SerializedPeer } from "./types"
 import { COORD_COLLECTION_NAME } from "./default"
-
-export enum PeerState {
-    Init, Ready, Running, Reporting, Shutdown
-}
 
 export class PeerContext {
     id: PeerId
@@ -16,7 +12,7 @@ export class PeerContext {
     coord_info: CoordinatorInfo | null
     transport_config: TransportConfig | null
     hb_doc_id: DocumentID | null
-    //hb_ctx?: HeartbeatCtx,
+    hb_timer: NodeJS.Timeout | null
     //start_time_msec: number,
     local_addr: string
     local_port: number
@@ -35,6 +31,7 @@ export class PeerContext {
         this.coord_info = null
         this.transport_config = null
         this.hb_doc_id = null
+        this.hb_timer = null
         this.local_addr = bind_addr
         this.local_port = bind_port
         this.state = PeerState.Init
@@ -42,17 +39,18 @@ export class PeerContext {
 
     stateTransition(from: PeerState, to: PeerState): void {
         if (this.state != from) {
-            throw new Error(`Invalid state transition from ${from} to ${to}`)
+            throw new Error(`Invalid state transition from ${PeerState[from]} to ${PeerState[to]}`)
         }
+        console.debug(`--> stateTransition ${PeerState[from]} -> ${PeerState[to]}`)
         this.state = to
     }
 
-    toPeer(): Peer {
+    toSerializedPeer(): SerializedPeer {
         return {
             peer_id: this.id,
             peer_ip_addr: this.local_addr,
             peer_port: this.local_port,
-            peer_state: this.state
+            state: PeerState[this.state]
         }
     }
 }

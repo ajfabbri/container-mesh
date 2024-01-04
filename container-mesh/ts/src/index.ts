@@ -4,10 +4,10 @@ import { CmeshPeer, CmeshEvent, PeerArgs } from './cmpeer';
 async function main() {
     // TODO from command line
     const pargs: PeerArgs = {
-        coord_addr: "localhost",
+        coord_addr: "127.0.0.1",
         coord_port: 4001,
-        peer_name: "ts-peer",
-        bind_addr: "localhost",
+        device_name: "tspeer",
+        bind_addr: "127.0.0.1",
         bind_port: 4010,
         output_dir: "output"
     }

@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync } from 'node:fs'
 import { Collection, DocumentID, PendingCursorOperation, Subscription, TransportConfig } from '@dittolive/ditto'
-import { make_ditto, random_peer_id } from './util'
+import { make_ditto, random_peer_id} from './util'
 import { Heartbeat, PeerReport, PeerState } from './types'
-import { REPORT_PROPAGATION_SEC } from './default'
+import { QUERY_POLL_SEC, REPORT_PROPAGATION_SEC } from './default'
 import { PeerContext } from './context'
 
 
@@ -16,7 +16,7 @@ export interface PeerArgs {
     // coordinator's ip address
     coord_addr: string
     coord_port: number
-    peer_name: string
+    device_name: string
     bind_addr: string
     bind_port: number
     output_dir: string
@@ -24,8 +24,8 @@ export interface PeerArgs {
 
 export const defaultPeerArgs: PeerArgs = {
     coord_addr: "127.0.0.1",
-    coord_port: 4000,
-    peer_name: "ts-peer",
+    coord_port: 4001,
+    device_name: "tspeer",
     bind_addr: "0.0.0.0",
     bind_port: 4010,
     output_dir: "output"
@@ -65,7 +65,7 @@ export class CmeshPeer {
         // TODO wait for test duration
         const dur = pctx.coord_info!.executionPlan!.test_duration_sec
         console.log(`--> Waiting for test duration (${dur} sec)`)
-        await new Promise(resolve => setTimeout(resolve, dur))
+        await new Promise(resolve => setTimeout(resolve, dur * 1000))
 
         pctx.stateTransition(PeerState.Running, PeerState.Reporting)
         // TODO stop producer
@@ -82,7 +82,7 @@ export class CmeshPeer {
             mkdirSync(this.pargs.output_dir);
         }
         const ditto = make_ditto()
-        const pctx = new PeerContext(random_peer_id(this.pargs.peer_name), ditto, this.pargs.coord_addr,
+        const pctx = new PeerContext(random_peer_id(this.pargs.device_name), ditto, this.pargs.coord_addr,
                                    this.pargs.coord_port, this.pargs.bind_addr, this.pargs.bind_port)
 
         // bootstrap peer
@@ -91,27 +91,29 @@ export class CmeshPeer {
         // TODO info
         console.log("--> Running test plan..")
         await cb(CmeshEvent.BeginTest)
-        const report = this.runTest(pctx)
+        const report = await this.runTest(pctx)
         await cb(CmeshEvent.EndTest)
-        await new Promise(resolve => setTimeout(resolve, REPORT_PROPAGATION_SEC))
         console.log(report)
         pctx.stateTransition(PeerState.Reporting, PeerState.Shutdown)
         await cb(CmeshEvent.Exiting)
+        await new Promise(resolve => setTimeout(resolve, REPORT_PROPAGATION_SEC * 1000))
+        clearInterval(pctx.hb_timer!)   // stop reporting our state to coordinator
     }
 
     async initTransport(pctx: PeerContext) {
+        const coord_tcp = `${pctx.coord_addr}:${pctx.coord_port}`
         // Default config has all transports disabled
         const config = new TransportConfig()
         config.peerToPeer.lan.isEnabled = true
         // TODO resolve / validate hostname
-        config.connect.tcpServers = [`${pctx.coord_addr}:${pctx.coord_port}`]
+        config.connect.tcpServers = [coord_tcp]
         config.connect.websocketURLs = []
         config.listen.tcp.isEnabled = true
         config.listen.tcp.port = pctx.coord_port
         config.listen.tcp.isEnabled = true
         config.listen.tcp.interfaceIP = pctx.local_addr
         config.listen.tcp.port = pctx.local_port
-        console.log(`--> set transport config listen ${config.listen.tcp.interfaceIP}:${config.listen.tcp.port}`)
+        console.log(`--> set transport config listen ${config.listen.tcp.interfaceIP}:${config.listen.tcp.port}, coord ${coord_tcp}`)
         pctx.ditto!.setTransportConfig(config)
     }
 
@@ -128,17 +130,13 @@ export class CmeshPeer {
         // Return a promise that resolves once we receive a non-empty coord info doc
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         return new Promise<void>((resolve, _reject) => {
-            coll.findAll().observeLocal((info, event) => {
-                if (event.isInitial) {
-                    return
-                }
-                if (info.length > 0) {
-                    // XXX debug log
-                    const cinfo = info[0]
+            coll.findAll().observeLocal((docs) => {
+                if (docs.length > 0) {
+                    const cinfo = docs[0]
                     pctx.coord_info = {
-                        heartbeatCollectionName: cinfo.at('heartbeat_collection_name').value(),
-                        heartbeatIntervalSec: cinfo.at('heartbeat_interval_sec').value(),
-                        executionPlan: cinfo.at('execution_plan').value(),
+                        heartbeatCollectionName: cinfo.at('heartbeat_collection_name').value,
+                        heartbeatIntervalSec: cinfo.at('heartbeat_interval_sec').value,
+                        executionPlan: cinfo.at('execution_plan').value,
                     }
                     if ((needPlan || needStart) && !pctx.coord_info.executionPlan) {
                         return
@@ -147,7 +145,7 @@ export class CmeshPeer {
                         return
                     }
 
-                    console.log(`--> coord info: ${pctx.coord_info}`)
+                    console.log(`--> coord info: ${JSON.stringify(pctx.coord_info)}`)
                     resolve()
                 }
             })
@@ -155,6 +153,7 @@ export class CmeshPeer {
     }
 
     async getInitialCoordInfo(pctx: PeerContext, coll: Collection) {
+        console.debug("Getting intial coord info")
         return this.getCoordInfo(pctx, coll, false, false)
     }
 
@@ -162,31 +161,40 @@ export class CmeshPeer {
         return this.getCoordInfo(pctx, coll, true, needStartTime)
     }
 
+    async getHeartbeatDocId(pctx: PeerContext, hbc: Collection): Promise<DocumentID> {
+        const hb_query: PendingCursorOperation = hbc.findAll()
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _hb_sub: Subscription = hb_query.subscribe()
+        console.debug(`Subscribed to ${pctx.coord_info!.heartbeatCollectionName}`)
+
+        let doc_id: DocumentID | null = null
+        while (doc_id == null) {
+            const docs = await hb_query.exec()
+            if (docs.length > 0) {
+                doc_id = docs[0].id
+            } else {
+                // wait for 2 seconds
+                await new Promise(resolve => setTimeout(resolve, QUERY_POLL_SEC))
+            }
+        }
+        return doc_id
+    }
+
     async startHeartbeat(pctx: PeerContext): Promise<NodeJS.Timeout> {
         const hbc = pctx.ditto!.store.collection(pctx.coord_info!.heartbeatCollectionName)
-        const hb_query: PendingCursorOperation = hbc.findAll()
-        const hb_sub: Subscription = hb_query.subscribe()
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const initial_doc = new Promise<DocumentID>((resolve, _reject) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            hb_query.observeLocal((docs, _event) => {
-                if (docs.length > 0) {
-                    resolve(docs[0].id)
-                    hb_sub.cancel()
-                }
-            })
-        })
-        const doc_id = await initial_doc
+        const doc_id = await this.getHeartbeatDocId(pctx, hbc)
+
         // set self-refreshing heartbeat send timer
-        const hb_func = async () => {
+        const hb_func = () => {
             // heartbeats are used only for bootstrapping, not during actual test run
-            if (pctx.state != PeerState.Init && pctx.state != PeerState.Ready) {
-                return
-            }
-            const hb: Heartbeat = { sender: pctx.toPeer(),
+            console.debug(`Heartbeat timer fired w/ state ${PeerState[pctx.state]}`)
+            const hb: Heartbeat = { sender: pctx.toSerializedPeer(),
                 sent_at_usec: Date.now() * 1000 }
-            hbc.findByID(doc_id).update( (mutDoc) => {
-                mutDoc.at('beats').set(hb)
+            const id_op = hbc.findByID(doc_id)
+            id_op.update( (mutDoc) => {
+                const beats = mutDoc.at(`beats`)
+                console.debug(`beats: ${JSON.stringify(beats.value)}`)
+                beats.at(pctx.id).set(hb)
             })
         }
         return setInterval(hb_func, pctx.coord_info!.heartbeatIntervalSec * 1000)
@@ -195,19 +203,19 @@ export class CmeshPeer {
     async bootstrapPeer(pctx: PeerContext) {
         this.initTransport(pctx)
         this.initLicense(pctx)
-        const store = pctx.ditto!.store
-        const coord_coll = store.collection(pctx.coord_collection)
+        pctx.ditto!.startSync()
+        const coord_coll = pctx.ditto!.store.collection(pctx.coord_collection)
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const _coord_sub = coord_coll.findAll().subscribe()
+        console.debug(`Subscribed to ${pctx.coord_collection}`)
 
         await this.getInitialCoordInfo(pctx, coord_coll)
-        const hb_timer = await this.startHeartbeat(pctx)
+        pctx.hb_timer = await this.startHeartbeat(pctx)
 
         await this.getExecutionPlan(pctx, coord_coll, false)
         // signal to coord that we are ready to execute
         pctx.stateTransition(PeerState.Init, PeerState.Ready)
         await this.getExecutionPlan(pctx, coord_coll, true)
-        clearInterval(hb_timer)
     }
 
 }

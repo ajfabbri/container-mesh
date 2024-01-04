@@ -26,16 +26,28 @@ export enum PeerState {
 }
 
 /** @internal */
+type SerializedPeerState = string
+
+/** @internal */
 export interface Peer {
     peer_id: PeerId;
     peer_ip_addr: string;
     peer_port: number;
-    peer_state: PeerState;
+    state: PeerState;
 }
 
 /** @internal */
+export interface SerializedPeer {
+    peer_id: PeerId;
+    peer_ip_addr: string;
+    peer_port: number;
+    state: SerializedPeerState;   // for serialization
+}
+
+
+/** @internal */
 export interface Heartbeat {
-    sender: Peer,
+    sender: SerializedPeer,
     sent_at_usec: number,
 }
 
@@ -75,12 +87,6 @@ export interface PeerLog {
 export interface PeerDoc {
     _id: DocumentID
     logs: Map<PeerId, PeerLog>
-}
-
-/** @internal */
-export interface Heartbeat {
-    sender: Peer
-    sent_at_usec: number
 }
 
 export class LatencyStats {
