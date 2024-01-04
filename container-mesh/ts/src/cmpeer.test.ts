@@ -4,9 +4,9 @@ test('cmditto app lifecycle', async () => {
     let begin = false
     let end = false
     let exit = false
-    let pargs: PeerArgs = defaultPeerArgs
-    let cmpeer = new CmeshPeer(pargs)
-    let fut = cmpeer.start(async (event: CmeshEvent) => {
+    const pargs: PeerArgs = defaultPeerArgs
+    const cmpeer = new CmeshPeer(pargs)
+    const fut = cmpeer.start(async (event: CmeshEvent) => {
         switch (event) {
             case CmeshEvent.BeginTest:
                 console.log("BeginTest")

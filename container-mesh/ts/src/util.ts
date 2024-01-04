@@ -1,4 +1,4 @@
-import { Ditto, DittoError, IdentityOfflinePlayground } from "@dittolive/ditto"
+import { Ditto, IdentityOfflinePlayground } from "@dittolive/ditto"
 
 export function random_peer_id(peer_name: string): string {
     // prefix + hexidecimal random u64
@@ -7,15 +7,15 @@ export function random_peer_id(peer_name: string): string {
 
 export function make_ditto(): Ditto {
     // get identity from DITTO_APP_ID env var
-    let app_id = process.env.DITTO_APP_ID
+    const app_id = process.env.DITTO_APP_ID
     if (!app_id) {
         throw new Error("DITTO_APP_ID env var not set")
     }
-    let identity: IdentityOfflinePlayground = {
+    const identity: IdentityOfflinePlayground = {
         appID: app_id,
         type: "offlinePlayground"
     }
     // TODO make configurable
-    let persist_dir = "/tmp/ditto"
+    const persist_dir = "/tmp/ditto"
     return new Ditto(identity, persist_dir)
 }

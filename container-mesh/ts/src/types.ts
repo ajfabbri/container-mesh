@@ -9,7 +9,7 @@ import { DocumentID } from "@dittolive/ditto";
 // Types needed internally to this library to be a cmesh peer
 
 /** @internal */
-export type PeerId = String;
+export type PeerId = string;
 
 /** @internal */
 export interface PeerGraph {
@@ -63,7 +63,7 @@ export interface ExecutionPlan {
 /** @internal */
 export interface PeerRecord {
     timestamp: number;
-    data: String;
+    data: string;
 }
 
 /** @internal */

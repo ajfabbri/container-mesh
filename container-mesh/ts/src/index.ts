@@ -3,7 +3,7 @@ import { CmeshPeer, CmeshEvent, PeerArgs } from './cmpeer';
 // main function
 async function main() {
     // TODO from command line
-    let pargs: PeerArgs = {
+    const pargs: PeerArgs = {
         coord_addr: "localhost",
         coord_port: 4001,
         peer_name: "ts-peer",
@@ -11,7 +11,7 @@ async function main() {
         bind_port: 4010,
         output_dir: "output"
     }
-    let cmp = new CmeshPeer(pargs)
+    const cmp = new CmeshPeer(pargs)
     await cmp.start(async (event: CmeshEvent) => {
         switch (event) {
             case CmeshEvent.BeginTest:

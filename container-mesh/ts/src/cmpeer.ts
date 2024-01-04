@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync } from 'node:fs'
-import { Collection, Ditto, DocumentID, TransportConfig } from '@dittolive/ditto'
+import { Collection, DocumentID, PendingCursorOperation, Subscription, TransportConfig } from '@dittolive/ditto'
 import { make_ditto, random_peer_id } from './util'
-import { CoordinatorInfo, Heartbeat, LatencyStats, PeerReport, PeerState } from './types'
-import { COORD_COLLECTION_NAME, REPORT_PROPAGATION_SEC } from './default'
+import { Heartbeat, PeerReport, PeerState } from './types'
+import { REPORT_PROPAGATION_SEC } from './default'
 import { PeerContext } from './context'
 
 
@@ -10,7 +10,7 @@ export enum CmeshEvent {
     BeginTest,
     EndTest,
     Exiting
-};
+}
 
 export interface PeerArgs {
     // coordinator's ip address
@@ -49,8 +49,8 @@ export class CmeshPeer {
         console.log("TODO connect mesh")
 
         // wait for start time
-        let start_time = pctx.coord_info!.executionPlan!.start_time
-        let delay = start_time - Date.now()
+        const start_time = pctx.coord_info!.executionPlan!.start_time
+        const delay = start_time - Date.now()
         if (delay > 0) {
             console.log(`--> Waiting ${delay} msec for start time`)
             await new Promise(resolve => setTimeout(resolve, delay))
@@ -63,7 +63,7 @@ export class CmeshPeer {
         // TODO create producer
         console.log("TODO create producer")
         // TODO wait for test duration
-        let dur = pctx.coord_info!.executionPlan!.test_duration_sec
+        const dur = pctx.coord_info!.executionPlan!.test_duration_sec
         console.log(`--> Waiting for test duration (${dur} sec)`)
         await new Promise(resolve => setTimeout(resolve, dur))
 
@@ -81,8 +81,8 @@ export class CmeshPeer {
             console.log(`Creating output directory ${this.pargs.output_dir}`)
             mkdirSync(this.pargs.output_dir);
         }
-        let ditto = make_ditto()
-        let pctx = new PeerContext(random_peer_id(this.pargs.peer_name), ditto, this.pargs.coord_addr,
+        const ditto = make_ditto()
+        const pctx = new PeerContext(random_peer_id(this.pargs.peer_name), ditto, this.pargs.coord_addr,
                                    this.pargs.coord_port, this.pargs.bind_addr, this.pargs.bind_port)
 
         // bootstrap peer
@@ -91,7 +91,7 @@ export class CmeshPeer {
         // TODO info
         console.log("--> Running test plan..")
         await cb(CmeshEvent.BeginTest)
-        let report = this.runTest(pctx)
+        const report = this.runTest(pctx)
         await cb(CmeshEvent.EndTest)
         await new Promise(resolve => setTimeout(resolve, REPORT_PROPAGATION_SEC))
         console.log(report)
@@ -101,7 +101,7 @@ export class CmeshPeer {
 
     async initTransport(pctx: PeerContext) {
         // Default config has all transports disabled
-        let config = new TransportConfig()
+        const config = new TransportConfig()
         config.peerToPeer.lan.isEnabled = true
         // TODO resolve / validate hostname
         config.connect.tcpServers = [`${pctx.coord_addr}:${pctx.coord_port}`]
@@ -116,7 +116,7 @@ export class CmeshPeer {
     }
 
     async initLicense(pctx: PeerContext) {
-        let lkey = process.env.DITTO_LICENSE
+        const lkey = process.env.DITTO_LICENSE
         if (!lkey) {
             throw new Error("DITTO_LICENSE environment variable not set")
         }
@@ -126,6 +126,7 @@ export class CmeshPeer {
     // Resolves when coord info has been fetched and set in pctx
     async getCoordInfo(pctx: PeerContext, coll: Collection, needPlan: boolean, needStart: boolean) {
         // Return a promise that resolves once we receive a non-empty coord info doc
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         return new Promise<void>((resolve, _reject) => {
             coll.findAll().observeLocal((info, event) => {
                 if (event.isInitial) {
@@ -162,25 +163,27 @@ export class CmeshPeer {
     }
 
     async startHeartbeat(pctx: PeerContext): Promise<NodeJS.Timeout> {
-        let hbc = pctx.ditto!.store.collection(pctx.coord_info!.heartbeatCollectionName)
-        let hb_sub = hbc.findAll().subscribe()
-        let initial_doc = new Promise<DocumentID>((resolve, _reject) => {
-            // @ts-ignore unused event
-            hb_sub.observeLocal((docs, _event) => {
+        const hbc = pctx.ditto!.store.collection(pctx.coord_info!.heartbeatCollectionName)
+        const hb_query: PendingCursorOperation = hbc.findAll()
+        const hb_sub: Subscription = hb_query.subscribe()
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const initial_doc = new Promise<DocumentID>((resolve, _reject) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            hb_query.observeLocal((docs, _event) => {
                 if (docs.length > 0) {
-                    resolve(docs[0].id())
+                    resolve(docs[0].id)
                     hb_sub.cancel()
                 }
             })
         })
-        let doc_id = await initial_doc
+        const doc_id = await initial_doc
         // set self-refreshing heartbeat send timer
-        let hb_func = async () => {
+        const hb_func = async () => {
             // heartbeats are used only for bootstrapping, not during actual test run
             if (pctx.state != PeerState.Init && pctx.state != PeerState.Ready) {
                 return
             }
-            let hb: Heartbeat = { sender: pctx.toPeer(),
+            const hb: Heartbeat = { sender: pctx.toPeer(),
                 sent_at_usec: Date.now() * 1000 }
             hbc.findByID(doc_id).update( (mutDoc) => {
                 mutDoc.at('beats').set(hb)
@@ -192,13 +195,13 @@ export class CmeshPeer {
     async bootstrapPeer(pctx: PeerContext) {
         this.initTransport(pctx)
         this.initLicense(pctx)
-        let store = pctx.ditto!.store
-        let coord_coll = store.collection(pctx.coord_collection)
-        // @ts-ignore unused var to keep sub alive
-        let _coord_sub = coord_coll.findAll().subscribe()
+        const store = pctx.ditto!.store
+        const coord_coll = store.collection(pctx.coord_collection)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _coord_sub = coord_coll.findAll().subscribe()
 
         await this.getInitialCoordInfo(pctx, coord_coll)
-        let hb_timer = await this.startHeartbeat(pctx)
+        const hb_timer = await this.startHeartbeat(pctx)
 
         await this.getExecutionPlan(pctx, coord_coll, false)
         // signal to coord that we are ready to execute
