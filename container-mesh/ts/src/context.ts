@@ -1,6 +1,7 @@
 import { Ditto, DocumentID, TransportConfig } from "@dittolive/ditto"
 import { CoordinatorInfo, PeerId, PeerState, SerializedPeer } from "./types"
 import { COORD_COLLECTION_NAME } from "./default"
+import { Consumer } from "./consumer"
 
 export class PeerContext {
     id: PeerId
@@ -17,8 +18,6 @@ export class PeerContext {
     local_addr: string
     local_port: number
     state: PeerState
-    //peer_collection?: Collection,
-    //peer_consumer?: PeerConsumer,
 
     constructor(id: PeerId, ditto: Ditto, coord_addr: string, coord_port: number,
                 bind_addr: string, bind_port: number) {

@@ -4,6 +4,7 @@ import { make_ditto, random_peer_id} from './util'
 import { Heartbeat, PeerReport, PeerState } from './types'
 import { QUERY_POLL_SEC, REPORT_PROPAGATION_SEC } from './default'
 import { PeerContext } from './context'
+import { Consumer } from './consumer'
 
 
 export enum CmeshEvent {
@@ -46,6 +47,7 @@ export class CmeshPeer {
 
     async runTest(pctx: PeerContext): Promise<PeerReport> {
 
+        const plan = pctx.coord_info!.executionPlan!
         console.log("TODO connect mesh")
 
         // wait for start time
@@ -58,8 +60,10 @@ export class CmeshPeer {
 
         pctx.stateTransition(PeerState.Ready, PeerState.Running)
 
-        // TODO create consumer
-        console.log("TODO create consumer")
+        const peerSub: Subscription = pctx.ditto!.store.collection(plan.peer_collection_name)
+                                        .findAll().subscribe()
+        const consumer = new Consumer(pctx, peerSub)
+
         // TODO create producer
         console.log("TODO create producer")
         // TODO wait for test duration
