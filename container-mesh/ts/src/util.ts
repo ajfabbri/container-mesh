@@ -1,4 +1,4 @@
-import { existsSync, rm } from 'node:fs'
+import { existsSync, rmSync } from 'node:fs'
 import { Ditto, IdentityOfflinePlayground } from "@dittolive/ditto"
 
 export function random_peer_id(peer_name: string): string {
@@ -21,7 +21,7 @@ export function make_ditto(): Ditto {
     // Remove existing persisted data
     if (existsSync(persist_dir)) {
         console.log(`Removing existing Ditto data in ${persist_dir}`)
-        rm(persist_dir, {recursive: true})
+        rmSync(persist_dir, {recursive: true})
     }
     return new Ditto(identity, persist_dir)
 }
