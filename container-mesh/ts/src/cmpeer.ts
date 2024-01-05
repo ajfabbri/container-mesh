@@ -5,6 +5,7 @@ import { Heartbeat, PeerReport, PeerState } from './types'
 import { QUERY_POLL_SEC, REPORT_PROPAGATION_SEC } from './default'
 import { PeerContext } from './context'
 import { Consumer } from './consumer'
+import { Producer } from './producer'
 
 
 export enum CmeshEvent {
@@ -62,14 +63,16 @@ export class CmeshPeer {
 
         const peerSub: Subscription = pctx.ditto!.store.collection(plan.peer_collection_name)
                                         .findAll().subscribe()
+
         const consumer = new Consumer(pctx, peerSub)
 
-        // TODO create producer
-        console.log("TODO create producer")
-        // TODO wait for test duration
-        const dur = pctx.coord_info!.executionPlan!.test_duration_sec
-        console.log(`--> Waiting for test duration (${dur} sec)`)
-        await new Promise(resolve => setTimeout(resolve, dur * 1000))
+        const producer = new Producer(pctx)
+
+        console.log(`--> Waiting for test duration (${plan.test_duration_sec} sec)`)
+        await new Promise(resolve => setTimeout(resolve, plan.test_duration_sec * 1000))
+
+        await producer.stop()
+        await consumer.stop()
 
         pctx.stateTransition(PeerState.Running, PeerState.Reporting)
         // TODO stop producer
