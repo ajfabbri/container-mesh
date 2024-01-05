@@ -18,6 +18,11 @@ export class Producer {
     async start(): Promise<void> {
         console.info("--> producer start")
         this.running = true
+        /*
+        const range = plan.max_msg_delay_msec - plan.min_msg_delay_msec
+        const nextDelay = plan.min_msg_delay_msec + Math.random() * range
+        setTimeout(() => {
+        */
     }
 
     // Stop producer and return number of records produced

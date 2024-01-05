@@ -8,10 +8,11 @@ import { Consumer } from './consumer'
 import { Producer } from './producer'
 
 
+// State transitions exposed to the app using this library
 export enum CmeshEvent {
-    BeginTest,
-    EndTest,
-    Exiting
+    BeginTest,  // Test execution is about to begin
+    EndTest,    // Test execution has finished
+    Exiting     // Last chance to use CmeshPeer before it cleans up
 }
 
 export interface PeerArgs {
@@ -61,23 +62,24 @@ export class CmeshPeer {
 
         pctx.stateTransition(PeerState.Ready, PeerState.Running)
 
-        const peerSub: Subscription = pctx.ditto!.store.collection(plan.peer_collection_name)
-                                        .findAll().subscribe()
+        const peerColl = pctx.ditto!.store.collection(plan.peer_collection_name)
+        const peerSub: Subscription = peerColl.findAll().subscribe()
 
-        const consumer = new Consumer(pctx, peerSub)
+        const consumer = new Consumer(pctx, peerColl)
+        await consumer.start()
 
         const producer = new Producer(pctx)
+        await producer.start()
 
         console.log(`--> Waiting for test duration (${plan.test_duration_sec} sec)`)
         await new Promise(resolve => setTimeout(resolve, plan.test_duration_sec * 1000))
 
-        await producer.stop()
-        await consumer.stop()
+        const recordsProduced = await producer.stop()
+        const latency = await consumer.stop()
 
         pctx.stateTransition(PeerState.Running, PeerState.Reporting)
-        // TODO stop producer
-        // TODO grab test results
-        return new PeerReport()
+        peerSub.cancel()
+        return new PeerReport(latency, recordsProduced)
     }
 
     // Start the peer and supply a callback for state transitions.
@@ -102,9 +104,11 @@ export class CmeshPeer {
         await cb(CmeshEvent.EndTest)
         console.log(report)
         pctx.stateTransition(PeerState.Reporting, PeerState.Shutdown)
+        const update_wait = new Promise(resolve => setTimeout(resolve, REPORT_PROPAGATION_SEC * 1000))
         await cb(CmeshEvent.Exiting)
-        await new Promise(resolve => setTimeout(resolve, REPORT_PROPAGATION_SEC * 1000))
+        await update_wait
         clearInterval(pctx.hb_timer!)   // stop reporting our state to coordinator
+        pctx.ditto!.stopSync()
     }
 
     async initTransport(pctx: PeerContext) {

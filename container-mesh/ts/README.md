@@ -21,4 +21,7 @@ coordinator and even rust peers (i.e. a p2p mesh test with Rust SDK peers and
 TS/JS SDK peers.
 
 ## TODOs
+- [ ] Style cleanup. *sad face* use camelCase, etc.
+- [ ] Mesh connection per coordinator's graph
+- [ ] Finish producer / consumer and test against rust peers.
 - [ ] Use codegen to generate structs / objects for rust and typescript.

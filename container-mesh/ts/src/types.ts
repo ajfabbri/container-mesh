@@ -66,10 +66,15 @@ export interface CoordinatorInfo {
 
 /** @internal */
 export interface ExecutionPlan {
-    start_time: number;
-    test_duration_sec: number;
-    report_collection_name: string;
-    peer_collection_name: string;
+    start_time: number
+    test_duration_sec: number
+    report_collection_name: string
+    peer_collection_name: string
+    peer_doc_id: DocumentID
+    min_msg_delay_msec: number
+    max_msg_delay_msec: number
+    peers: Peer[]
+    connections: PeerGraph
 }
 
 /** @internal */
@@ -109,9 +114,9 @@ export class PeerReport {
     message_latency: LatencyStats
     records_produced: number
 
-    constructor() {
-        this.message_latency = new LatencyStats()
-        this.records_produced = 0
+    constructor(latency: LatencyStats, records: number) {
+        this.message_latency = latency
+        this.records_produced = records
     }
 }
 

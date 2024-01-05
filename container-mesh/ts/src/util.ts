@@ -32,3 +32,7 @@ export function stringify(obj: any): string {
         typeof v === "bigint" ? v.toString() : v
     })
 }
+
+export function system_time_usec(): number {
+    return Date.now() * 1000
+}
