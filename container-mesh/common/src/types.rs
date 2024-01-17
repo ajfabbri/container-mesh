@@ -46,6 +46,7 @@ fn short_peer_str(peer_name: &str) -> String {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PeerGraph {
+    #[serde(flatten)]
     pub nmap: HashMap<PeerId, HashSet<PeerId>>,
 }
 
