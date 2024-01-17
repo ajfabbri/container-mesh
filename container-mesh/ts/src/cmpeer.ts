@@ -1,12 +1,11 @@
 import { existsSync, mkdirSync } from 'node:fs'
 import { Collection, DocumentID, PendingCursorOperation, Subscription, TransportConfig } from '@dittolive/ditto'
-import { make_ditto, random_peer_id} from './util'
-import { Heartbeat, PeerReport, PeerState } from './types'
+import { make_ditto, random_peer_id, stringify, system_time_msec} from './util'
+import { CoordinatorInfo, Heartbeat, PeerReport, PeerState } from './types'
 import { QUERY_POLL_SEC, REPORT_PROPAGATION_SEC } from './default'
 import { PeerContext } from './context'
 import { Consumer } from './consumer'
 import { Producer } from './producer'
-
 
 // State transitions exposed to the app using this library
 export enum CmeshEvent {
@@ -47,13 +46,19 @@ export class CmeshPeer {
         this.pargs = args;
     }
 
+    async connectMesh(pctx: PeerContext): Promise<void> {
+        const plan = pctx.coord_info!.execution_plan!
+        const myConns = plan.connections[pctx.id]
+        console.debug(`--> initiating connections to ${stringify(myConns)}`)
+    }
+
     async runTest(pctx: PeerContext): Promise<PeerReport> {
 
-        const plan = pctx.coord_info!.executionPlan!
-        console.log("TODO connect mesh")
+        const plan = pctx.coord_info!.execution_plan!
+        this.connectMesh(pctx)
 
         // wait for start time
-        const start_time = pctx.coord_info!.executionPlan!.start_time
+        const start_time = pctx.coord_info!.execution_plan!.start_time
         const delay = start_time - Date.now()
         if (delay > 0) {
             console.log(`--> Waiting ${delay} msec for start time`)
@@ -68,7 +73,7 @@ export class CmeshPeer {
         const consumer = new Consumer(pctx, peerColl)
         await consumer.start()
 
-        const producer = new Producer(pctx)
+        const producer = new Producer(pctx, peerColl)
         await producer.start()
 
         console.log(`--> Waiting for test duration (${plan.test_duration_sec} sec)`)
@@ -107,6 +112,7 @@ export class CmeshPeer {
         const update_wait = new Promise(resolve => setTimeout(resolve, REPORT_PROPAGATION_SEC * 1000))
         await cb(CmeshEvent.Exiting)
         await update_wait
+        console.debug("--> Stopping heartbeat timer..")
         clearInterval(pctx.hb_timer!)   // stop reporting our state to coordinator
         pctx.ditto!.stopSync()
     }
@@ -144,19 +150,21 @@ export class CmeshPeer {
             coll.findAll().observeLocal((docs) => {
                 if (docs.length > 0) {
                     const cinfo = docs[0]
-                    pctx.coord_info = {
-                        heartbeatCollectionName: cinfo.at('heartbeat_collection_name').value,
-                        heartbeatIntervalSec: cinfo.at('heartbeat_interval_sec').value,
-                        executionPlan: cinfo.at('execution_plan').value,
-                    }
-                    if ((needPlan || needStart) && !pctx.coord_info.executionPlan) {
+                    if (!cinfo.value) {
                         return
                     }
-                    if (needStart && !pctx.coord_info.executionPlan?.start_time) {
+                    pctx.coord_info = cinfo.value as CoordinatorInfo
+                    if (pctx.coord_info.heartbeat_collection_name == null) {
+                        // Saw this once. :shrug:
+                        console.error("--> coord_info has null hb collection name!")
+                    }
+                    if ((needPlan || needStart) && !pctx.coord_info.execution_plan) {
+                        return
+                    }
+                    if (needStart && !pctx.coord_info.execution_plan?.start_time) {
                         return
                     }
 
-                    console.log(`--> coord info: ${JSON.stringify(pctx.coord_info)}`)
                     resolve()
                 }
             })
@@ -169,14 +177,19 @@ export class CmeshPeer {
     }
 
     async getExecutionPlan(pctx: PeerContext, coll: Collection, needStartTime: boolean) {
-        return this.getCoordInfo(pctx, coll, true, needStartTime)
+         await this.getCoordInfo(pctx, coll, true, needStartTime)
+         const plan = pctx.coord_info!.execution_plan!
+         console.debug("--> getExecutionPlan:", plan)
+         // XXX force deserialization
+         plan.peer_doc_id = new DocumentID(plan.peer_doc_id)
+         console.debug("--> getExecutionPlan after fixup:", plan)
     }
 
     async getHeartbeatDocId(pctx: PeerContext, hbc: Collection): Promise<DocumentID> {
         const hb_query: PendingCursorOperation = hbc.findAll()
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const _hb_sub: Subscription = hb_query.subscribe()
-        console.debug(`Subscribed to ${pctx.coord_info!.heartbeatCollectionName}`)
+        console.debug(`Subscribed to ${pctx.coord_info!.heartbeat_collection_name}`)
 
         let doc_id: DocumentID | null = null
         while (doc_id == null) {
@@ -192,7 +205,7 @@ export class CmeshPeer {
     }
 
     async startHeartbeat(pctx: PeerContext): Promise<NodeJS.Timeout> {
-        const hbc = pctx.ditto!.store.collection(pctx.coord_info!.heartbeatCollectionName)
+        const hbc = pctx.ditto!.store.collection(pctx.coord_info!.heartbeat_collection_name)
         const doc_id = await this.getHeartbeatDocId(pctx, hbc)
 
         // set self-refreshing heartbeat send timer
@@ -200,7 +213,7 @@ export class CmeshPeer {
             // heartbeats are used only for bootstrapping, not during actual test run
             console.debug(`Heartbeat timer fired w/ state ${PeerState[pctx.state]}`)
             const hb: Heartbeat = { sender: pctx.toSerializedPeer(),
-                sent_at_usec: Date.now() * 1000 }
+                sent_at_msec: system_time_msec() }
             const id_op = hbc.findByID(doc_id)
             id_op.update( (mutDoc) => {
                 const beats = mutDoc.at(`beats`)
@@ -208,7 +221,7 @@ export class CmeshPeer {
                 beats.at(pctx.id).set(hb)
             })
         }
-        return setInterval(hb_func, pctx.coord_info!.heartbeatIntervalSec * 1000)
+        return setInterval(hb_func, pctx.coord_info!.heartbeat_interval_sec * 1000)
     }
 
     async bootstrapPeer(pctx: PeerContext) {

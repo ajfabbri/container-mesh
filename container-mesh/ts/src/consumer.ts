@@ -1,7 +1,7 @@
-import { Collection, DocumentPath, LiveQuery, Subscription } from '@dittolive/ditto'
+import { Collection, DocumentPath, LiveQuery, Subscription, DocumentID } from '@dittolive/ditto'
 import { PeerContext } from './context'
-import { LatencyStats, PeerId, PeerDoc, PeerLog, PeerRecord } from './types'
-import { stringify, system_time_usec } from './util'
+import { LatencyStats, PeerId, PeerDoc, PeerLogs, PeerLog, PeerRecord } from './types'
+import { system_time_msec } from './util'
 import { PEER_LOG_SIZE } from './default'
 
 interface TimestampIndex {
@@ -35,21 +35,22 @@ export class Consumer {
 
     async createPeerCollection(): Promise<Collection> {
         const store = this.pctx.ditto!.store
-        const plan = this.pctx.coord_info!.executionPlan!
+        const plan = this.pctx.coord_info!.execution_plan!
         const pc = store.collection(plan.peer_collection_name)
-        const logs = new Map<PeerId, PeerLog>()
-        logs.set(this.pctx.id, { log: new Map<string, PeerRecord>() })
+        const log : {[key: string]: PeerRecord} = {}
+        const logs : {[key: string]: PeerLog} = {}
+        logs[this.pctx.id] = { log: log }
         const pdoc: PeerDoc = { _id: plan.peer_doc_id, logs: logs }
         await pc.upsert(pdoc)
         return pc
     }
 
     async processPeer(pid: PeerId, plog: PeerLog): Promise<void> {
-        const now = system_time_usec()
+        const now = system_time_msec()
         let {ts, i} = this.getTSIdx(pid)
         // eslint-disable-next-line no-constant-condition
         while (true) {
-            const rec = plog.log.get(i.toString())
+            const rec = plog.log[i.toString()]
             if (!rec || rec.timestamp < ts) {
                 // no record, or we wrapped around to an old one
                 break;
@@ -57,10 +58,10 @@ export class Consumer {
             const latency = now - rec.timestamp
             this.msgLatencyTotal += latency
             this.msgLatency.num_events += 1
-            this.msgLatency.min_usec = Math.min(this.msgLatency.min_usec, latency)
-            this.msgLatency.max_usec = Math.max(this.msgLatency.max_usec, latency)
-            this.msgLatency.avg_usec = this.msgLatencyTotal / this.msgLatency.num_events
-            console.debug(`--> got peer record ${stringify(rec)} w/ latency ${latency}`)
+            this.msgLatency.min_msec = Math.min(this.msgLatency.min_msec, latency)
+            this.msgLatency.max_msec = Math.max(this.msgLatency.max_msec, latency)
+            this.msgLatency.avg_msec = this.msgLatencyTotal / this.msgLatency.num_events
+            console.debug('--> got peer record ', rec, ` w/ latency ${latency}`)
             i = incrWrap(i, PEER_LOG_SIZE-1)
             ts = rec.timestamp
         }
@@ -84,14 +85,16 @@ export class Consumer {
 
     // Start consumer and return the peer collection
     async start(): Promise<Collection> {
-        const plan = this.pctx.coord_info!.executionPlan!
+        const plan = this.pctx.coord_info!.execution_plan!
+        const docId: DocumentID = plan.peer_doc_id
+        const docIdStr = docId.toQueryCompatibleString
         console.info(`--> consumer start for coll ${plan.peer_collection_name}` +
-                     `w/ doc id ${plan.peer_doc_id}`)
+                     `w/ doc id ${docIdStr} logged: `, docId)
         this.running = true
         const pc = await this.createPeerCollection()
         const query = pc.findByID(plan.peer_doc_id)
         this.sub = query.subscribe()
-        /* XXX try DQL
+        /* XXX TODO use DQL
         this.timeout = setInterval(async () => {
             const result = await this.pctx.ditto!.store.execute(
                 `SELECT * FROM COLLECTION "${plan.peer_collection_name}" (logs MAP) WHERE _id = "${plan.peer_doc_id}"`)
@@ -107,18 +110,17 @@ export class Consumer {
             if (!this.running) {
                 return
             }
-            console.debug(`XXX observe event ${stringify(_event)}`)
             if (doc) {
-                console.debug(`XXX observe doc: ${stringify(doc)}, val: ${stringify(doc.value)}`)
                 const logsPath: DocumentPath = doc.at('logs')
-                const logs: Map<PeerId, PeerLog> = logsPath.value
-                console.debug(`XXX observe: ${stringify(logsPath)}, val: ${stringify(logs)}`)
-                for (const [peerId, peerLog] of logs) {
+                const logs: PeerLogs = logsPath.value
+                if (!logs) {
+                    return;
+                }
+                for (const peerId of Object.keys(logs)) {
                     if (peerId == this.pctx.id) {
-                        console.debug(`--> skipping log for self ${peerId}`)
                         continue
                     }
-                    this.processPeer(peerId, peerLog)
+                    this.processPeer(peerId, logs[peerId])
                 }
             }
         })
@@ -134,6 +136,7 @@ export class Consumer {
         if (this.timeout) {
             clearInterval(this.timeout)
         }
+        this.msgLatency.distinct_peers = this.lastTsIdxByPeer.size
         return this.msgLatency
     }
 

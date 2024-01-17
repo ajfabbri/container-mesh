@@ -1,6 +1,7 @@
 import { existsSync, rmSync } from 'node:fs'
 import { Ditto, IdentityOfflinePlayground } from "@dittolive/ditto"
 
+// TODO camelCase functions
 export function random_peer_id(peer_name: string): string {
     // prefix + hexidecimal random u64
     return `${peer_name}_${Math.random().toString(16).substr(2, 8)}`
@@ -17,7 +18,8 @@ export function make_ditto(): Ditto {
         type: "offlinePlayground"
     }
     // TODO make configurable
-    const persist_dir = "/tmp/ditto"
+    const randStr = Math.random().toString(16).substr(2, 8)
+    const persist_dir = `/tmp/ditto-${randStr}`
     // Remove existing persisted data
     if (existsSync(persist_dir)) {
         console.log(`Removing existing Ditto data in ${persist_dir}`)
@@ -33,6 +35,6 @@ export function stringify(obj: any): string {
     })
 }
 
-export function system_time_usec(): number {
-    return Date.now() * 1000
+export function system_time_msec(): number {
+    return Date.now()
 }

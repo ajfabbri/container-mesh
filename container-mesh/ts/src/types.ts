@@ -1,5 +1,7 @@
 /**
  * Keep this in sync with ../common/src/types.ts
+ * Note: we use snake_case field names for serialized fields to match the
+ * actual document paths/keys.
  * TODO codegen
  */
 
@@ -11,9 +13,10 @@ import { DocumentID } from "@dittolive/ditto";
 /** @internal */
 export type PeerId = string;
 
+// map from peer id to set of peer ids it should connect to
 /** @internal */
 export interface PeerGraph {
-    nmap: Map<string, Set<string>>;
+    [key: string]: Array<string>
 }
 
 /** @internal */
@@ -48,7 +51,7 @@ export interface SerializedPeer {
 /** @internal */
 export interface Heartbeat {
     sender: SerializedPeer,
-    sent_at_usec: number,
+    sent_at_msec: number,
 }
 
 /** @internal */
@@ -59,9 +62,9 @@ export interface HeartbeatsDoc {
 
 /** @internal */
 export interface CoordinatorInfo {
-    heartbeatCollectionName: string
-    heartbeatIntervalSec: number
-    executionPlan: ExecutionPlan | null
+    heartbeat_collection_name: string
+    heartbeat_interval_sec: number
+    execution_plan: ExecutionPlan | null
 }
 
 /** @internal */
@@ -78,34 +81,40 @@ export interface ExecutionPlan {
 }
 
 /** @internal */
-export interface PeerRecord {
+export class PeerRecord {
     timestamp: number;
     data: string;
+    constructor() {
+        this.timestamp = Date.now()
+        this.data = ""
+    }
 }
 
 /** @internal */
 export interface PeerLog {
-    log: Map<string, PeerRecord>;
+    log: { [key: string]: PeerRecord }
 }
+
+export type PeerLogs = { [key: PeerId]: PeerLog }
 
 /** @internal */
 export interface PeerDoc {
     _id: DocumentID
-    logs: Map<PeerId, PeerLog>
+    logs: PeerLogs
 }
 
 export class LatencyStats {
     num_events: number
-    min_usec: number
-    max_usec: number
-    avg_usec: number
+    min_msec: number
+    max_msec: number
+    avg_msec: number
     distinct_peers: number
 
     constructor() {
         this.num_events = 0
-        this.min_usec = 0
-        this.max_usec = 0
-        this.avg_usec = 0
+        this.min_msec = Number.MAX_SAFE_INTEGER
+        this.max_msec = 0
+        this.avg_msec = 0
         this.distinct_peers = 0
     }
 }
