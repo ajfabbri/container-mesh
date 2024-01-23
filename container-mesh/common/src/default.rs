@@ -47,7 +47,7 @@ impl Default for ExecutionPlan {
 impl Default for PeerRecord {
     fn default() -> Self {
         PeerRecord {
-            timestamp: util::system_time_usec(),
+            timestamp: util::system_time_msec(),
             data: String::new(),
         }
     }

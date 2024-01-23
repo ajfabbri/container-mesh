@@ -41,7 +41,7 @@ def get_test_info(results_dir: str) -> TestInfo:
 
 # Example format of data-*log files:
 # # peer9-report.json
-# PeerReport { message_latency: LatencyStats { num_events: 684, min_usec: 182130, max_usec: 2624592, avg_usec: 1017258, distinct_peers: 19 }, records_produced: 40 }
+# PeerReport { message_latency: LatencyStats { num_events: 684, min_msec: 182130, max_msec: 2624592, avg_msec: 1017258, distinct_peers: 19 }, records_produced: 40 }
 
 TestOutput = Dict[str, Tuple[TestInfo, Dict]]
 
@@ -52,7 +52,7 @@ def parse_test_output(results_dir: str) -> TestOutput:
     path_re = re.compile(r'.*data-(?P<graph_type>[^\.]+)-(?P<iteration>\d+).log')
     peer_re = re.compile(r'# peer(?P<peer>\d+)-report.json')
     data_re = re.compile(r'.*message_latency: LatencyStats { num_events: (?P<num_events>\d+), ' + \
-            r'min_usec: (?P<min_usec>\d+), max_usec: (?P<max_usec>\d+), avg_usec: (?P<avg_usec>\d+), ' + \
+            r'min_msec: (?P<min_msec>\d+), max_msec: (?P<max_msec>\d+), avg_msec: (?P<avg_msec>\d+), ' + \
             r'distinct_peers: (?P<distinct_peers>\d+) }, records_produced: (?P<records_produced>\d+)')
 
     # find each test run dir and the files within it
@@ -120,8 +120,8 @@ def get_max_yval(stat_name: str, data: TestOutput):
                             max_y = int(i[stat_name])
     return max_y
 
-def usec_to_sec(usec: int) -> float:
-    return float(usec) / 1.0e6
+def msec_to_sec(msec: int) -> float:
+    return float(msec) / 1.0e3
 
 # returns filename of the graph crated
 def scatter_by_peer(data: Dict[str, Dict[str, List[dict]]], output_dir: str,
@@ -130,7 +130,7 @@ def scatter_by_peer(data: Dict[str, Dict[str, List[dict]]], output_dir: str,
     # plot a scatter chart with x axis as peer number, y axis as average
     # latency, and color corresponding to graph type
 
-    stat = 'avg_usec'
+    stat = 'avg_msec'
     scatter_min_val = 1.1 if log_y else 0
 
     fig, _ax = plt.subplots(figsize=GRAPH_SIZE, dpi=GRAPH_DPI)
@@ -144,9 +144,9 @@ def scatter_by_peer(data: Dict[str, Dict[str, List[dict]]], output_dir: str,
             num_peers += 1
             for iteration in iterations:
                 x.append(int(peer))
-                yval = int(iteration[stat])
+                yval: float = iteration[stat]
                 yval = max(scatter_min_val, yval) if MAKE_SCATTER_GIF else yval
-                y.append(usec_to_sec(yval))
+                y.append(msec_to_sec(yval))
         #type: ignore
         # zero values indicate failures, enlarge them
         y_to_size = lambda y: 20 if y < scatter_min_val else 5
@@ -174,13 +174,13 @@ def events_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], output_dir: str):
                      True, output_dir)
 
 def min_latency_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], output_dir: str):
-    average_by_scale(tests, 'min_usec', "Min latency", False, output_dir, log_y=True)
+    average_by_scale(tests, 'min_msec', "Min latency", False, output_dir, log_y=True)
 
 def max_latency_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], output_dir: str):
-    average_by_scale(tests, 'max_usec', "Max latency", False, output_dir)
+    average_by_scale(tests, 'max_msec', "Max latency", False, output_dir)
 
 def avg_latency_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], output_dir: str):
-    average_by_scale(tests, 'avg_usec', "Average latency", False, output_dir)
+    average_by_scale(tests, 'avg_msec', "Average latency", False, output_dir)
 
 def average_by_scale(tests: Dict[str, Tuple[TestInfo, Dict]], field_name,
                      y_description: str, per_second: bool, output_dir: str, log_y=False):
@@ -288,7 +288,7 @@ def main():
     max_y : Optional[int] = None
     log_y = False
     if MAKE_SCATTER_GIF:
-        max_y = math.ceil(usec_to_sec(get_max_yval('avg_usec', tests)))
+        max_y = math.ceil(msec_to_sec(get_max_yval('avg_msec', tests)))
         print(f"# --> using fixed y range (max {max_y})")
         #log_y = True
 

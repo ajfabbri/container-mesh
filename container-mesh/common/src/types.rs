@@ -123,7 +123,7 @@ pub struct Peer {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Heartbeat {
     pub sender: Peer,
-    pub sent_at_usec: u64,  // TODO use msec
+    pub sent_at_msec: u64,
 }
 
 impl PartialEq for Peer {
@@ -210,9 +210,9 @@ pub struct PeerDoc {
 pub struct LatencyStats {
     // TODO histogram
     pub num_events: u64,
-    pub min_usec: u64,
-    pub max_usec: u64,
-    pub avg_usec: u64,
+    pub min_msec: u64,
+    pub max_msec: u64,
+    pub avg_msec: u64,
     pub distinct_peers: usize,
 }
 
@@ -220,9 +220,9 @@ impl LatencyStats {
     pub fn new() -> Self {
         Self {
             num_events: 0,
-            min_usec: u64::MAX,
-            max_usec: 0,
-            avg_usec: 0,
+            min_msec: u64::MAX,
+            max_msec: 0,
+            avg_msec: 0,
             distinct_peers: 0,
         }
     }
@@ -230,8 +230,8 @@ impl LatencyStats {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AvailabilityStats {
-    pub start_time_usec: u64,
-    pub end_time_usec: u64,
+    pub start_time_msec: u64,
+    pub end_time_msec: u64,
     pub down_time: Duration,
 }
 

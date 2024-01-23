@@ -224,7 +224,7 @@ fn bootstrap_peer<'a>(pctx: &'a mut PeerContext, cli: &Cli) -> Result<(), Box<dy
             peer_ip_addr: pctx.local_ip.clone(),
             peer_port: pctx.local_port,
         },
-        sent_at_usec: 0,
+        sent_at_msec: 0,
     };
 
     // Fetch initial heartbeat doc and start heartbeat timer

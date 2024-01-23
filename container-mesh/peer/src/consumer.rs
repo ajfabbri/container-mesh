@@ -9,7 +9,7 @@ use std::{
 use crate::PeerContext;
 use common::{
     types::*,
-    util::{print_cdoc, system_time_usec}, default::PEER_LOG_SIZE,
+    util::{print_cdoc, system_time_msec}, default::PEER_LOG_SIZE,
 };
 use dittolive_ditto::prelude::*;
 
@@ -57,7 +57,7 @@ impl PeerConsumer {
     }
 
     fn process_peer(&mut self, id: PeerId, pl: &PeerLog) {
-        let now = system_time_usec();
+        let now = system_time_msec();
         let (mut ts, mut i) = self.get_ts_idx(&id);
         debug!("--> process_peer {} w/ log len {}", id, pl.log.len());
         loop {
@@ -70,9 +70,9 @@ impl PeerConsumer {
             let latency = now - r.timestamp;
             self.msg_latency_total += latency;
             self.msg_latency.num_events += 1;
-            self.msg_latency.min_usec = cmp::min(self.msg_latency.min_usec, latency);
-            self.msg_latency.max_usec = cmp::max(self.msg_latency.max_usec, latency);
-            self.msg_latency.avg_usec = self.msg_latency_total / self.msg_latency.num_events;
+            self.msg_latency.min_msec = cmp::min(self.msg_latency.min_msec, latency);
+            self.msg_latency.max_msec = cmp::max(self.msg_latency.max_msec, latency);
+            self.msg_latency.avg_msec = self.msg_latency_total / self.msg_latency.num_events;
             debug!("--> got peer record {:?} w/ latency {}", r, latency);
             i = incr_wrap(i, PEER_LOG_SIZE-1);
             ts = r.timestamp
