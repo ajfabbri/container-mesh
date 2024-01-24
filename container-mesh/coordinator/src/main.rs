@@ -312,6 +312,9 @@ fn generate_plan(
             plan.connections = spanning_tree(&peer_ids, GRAPH_SPANNING_MAX_DEGREE);
         }
         GraphType::LAModel => {
+            if peer_ids.len() < GRAPH_LA_CLIQUE_SIZE {
+                panic!("Need at least {} peers for LA model", GRAPH_LA_CLIQUE_SIZE);
+            }
             plan.connections = local_attachment_model(&peer_ids, GRAPH_LA_CLIQUE_SIZE);
         }
     }
@@ -374,7 +377,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         "conn-graph-{}-{}.dot",
         &cli.connection_graph.to_possible_value().unwrap().get_name(),
         cli.min_peers
-
     ));
     File::create(dot_outfile)
         .unwrap()
