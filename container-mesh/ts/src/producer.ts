@@ -54,6 +54,7 @@ export class Producer {
             const dp = mutDoc.at(recPath)
             dp.set(rec)
         })
+        this.msgCount += 1
         return this.setProduceTimer()
     }
 

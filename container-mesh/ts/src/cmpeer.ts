@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync } from 'node:fs'
 import { Collection, DocumentID, PendingCursorOperation, Subscription, TransportConfig } from '@dittolive/ditto'
-import { make_ditto, random_peer_id, stringify, system_time_msec} from './util'
-import { CoordinatorInfo, Heartbeat, PeerReport, PeerState } from './types'
+import { make_ditto, random_peer_id, system_time_msec} from './util'
+import { CoordinatorInfo, Heartbeat, Peer, PeerReport, PeerState } from './types'
 import { QUERY_POLL_SEC, REPORT_PROPAGATION_SEC } from './default'
 import { PeerContext } from './context'
 import { Consumer } from './consumer'
@@ -48,8 +48,18 @@ export class CmeshPeer {
 
     async connectMesh(pctx: PeerContext): Promise<void> {
         const plan = pctx.coord_info!.execution_plan!
-        const myConns = plan.connections[pctx.id]
-        console.debug(`--> initiating connections to ${stringify(myConns)}`)
+        const peersToConnect = plan.connections[pctx.id]
+        console.debug('--> initiating connections to', peersToConnect)
+        for (const pid of peersToConnect) {
+            const peerObj: Peer | undefined = plan.peers.find((p) => p.peer_id == pid)
+            if (peerObj === undefined) {
+                console.error(`--> Peer ${pid} not found in execution plan's peer list`)
+                continue
+            }
+            const peer = `${peerObj!.peer_ip_addr}:${peerObj!.peer_port}`
+            pctx.transport_config!.connect.tcpServers.push(peer)
+        }
+        pctx.ditto!.setTransportConfig(pctx.transport_config!)
     }
 
     async runTest(pctx: PeerContext): Promise<PeerReport> {
@@ -132,6 +142,7 @@ export class CmeshPeer {
         config.listen.tcp.port = pctx.local_port
         console.log(`--> set transport config listen ${config.listen.tcp.interfaceIP}:${config.listen.tcp.port}, coord ${coord_tcp}`)
         pctx.ditto!.setTransportConfig(config)
+        pctx.transport_config = config
     }
 
     async initLicense(pctx: PeerContext) {
