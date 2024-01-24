@@ -6,6 +6,7 @@ import { QUERY_POLL_SEC, REPORT_PROPAGATION_SEC } from './default'
 import { PeerContext } from './context'
 import { Consumer } from './consumer'
 import { Producer } from './producer'
+import { PeerArgs } from './peerargs'
 
 // State transitions exposed to the app using this library
 export enum CmeshEvent {
@@ -14,34 +15,10 @@ export enum CmeshEvent {
     Exiting     // Last chance to use CmeshPeer before it cleans up
 }
 
-export interface PeerArgs {
-    // coordinator's ip address
-    coord_addr: string
-    coord_port: number
-    device_name: string
-    bind_addr: string
-    bind_port: number
-    output_dir: string
-}
-
-export const defaultPeerArgs: PeerArgs = {
-    coord_addr: "127.0.0.1",
-    coord_port: 4001,
-    device_name: "tspeer",
-    bind_addr: "0.0.0.0",
-    bind_port: 4010,
-    output_dir: "output"
-}
-
-
 type CMEventCallback = (event: CmeshEvent) => Promise<void>;
 export class CmeshPeer {
-    pargs: PeerArgs;
+    pargs: PeerArgs
 
-    //ditto: Ditto;
-    hello(who: string): void {
-        console.log(`Hello ${who}!`)
-    }
     constructor(args: PeerArgs) {
         this.pargs = args;
     }
