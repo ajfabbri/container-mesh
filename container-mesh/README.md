@@ -201,6 +201,17 @@ Search / replace things like:
 - libdittoffi.so (i.e. to .dylib)
 - "/lib" for target library paths, i.e. in docker/run*.sh
 
+# Typescript Peer
+
+There is also a Typescript (JS SDK) peer implementaion in [/ts](./ts). This was
+ported from the Rust implementation so we can compare the performance of this
+SDK, and write instrumented test cases that take advantage of the distributed
+test execution control provided by the coordinator.
+
+The typescript implementation is written as a library you can include to create
+your own test application. An example of a simple app which participates in a
+cmesh test as a client is in [ts/src/index.ts](./ts/src/index.ts)
+
 # Design & Notes (WIP)
 
 ### Metrics
