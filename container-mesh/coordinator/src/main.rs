@@ -367,7 +367,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let start_in_sec = start_delay_secs(hbp);
     info!("--> setting start time in {} seconds.", start_in_sec);
-    set_coord_info_plan_start(ccollection, cdoc_id, system_time_msec() + start_in_sec)?;
+    set_coord_info_plan_start(ccollection, cdoc_id, system_time_msec() + start_in_sec * 1000)?;
 
     info!("-> waiting for peers to start Running..");
     wait_for_peer_state(hbp, Running, cli.min_peers)?;

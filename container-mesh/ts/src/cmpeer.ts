@@ -51,6 +51,8 @@ export class CmeshPeer {
         if (delay > 0) {
             console.log(`--> Waiting ${delay} msec for start time`)
             await new Promise(resolve => setTimeout(resolve, delay))
+        } else {
+            console.debug(`--> Start time ${start_time} already passed (delta ${delay})`)
         }
 
         pctx.stateTransition(PeerState.Ready, PeerState.Running)
