@@ -22,6 +22,8 @@ async function main() {
                 fail("Unexpected event")
             }
         })
+
+    cmp.printReport()
 }
 
 main().then(() => {

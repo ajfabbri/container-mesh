@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { Collection, DocumentID, PendingCursorOperation, Subscription, TransportConfig } from '@dittolive/ditto'
 import { make_ditto, random_peer_id, system_time_msec} from './util'
 import { CoordinatorInfo, Heartbeat, Peer, PeerReport, PeerState } from './types'
@@ -18,6 +18,7 @@ export enum CmeshEvent {
 type CMEventCallback = (event: CmeshEvent) => Promise<void>;
 export class CmeshPeer {
     pargs: PeerArgs
+    report: PeerReport | null = null
 
     constructor(args: PeerArgs) {
         this.pargs = args;
@@ -74,6 +75,20 @@ export class CmeshPeer {
         return new PeerReport(latency, recordsProduced)
     }
 
+    public printReport() {
+        if (this.report == null) {
+            console.error("No report available yet!")
+            return
+        }
+        const output: string = JSON.stringify(this.report!)
+        output.replace(/\n/g, " ")
+        // write to file in pargs.output_dir
+        const fname = `${this.pargs.output_dir}/${this.pargs.device_name}-report.json`
+        console.log(`--> Writing report to ${fname}`)
+        // write to the file
+        return writeFileSync(fname, output)
+    }
+
     // Start the peer and supply a callback for state transitions.
     public async start(cb: CMEventCallback) {
 
@@ -92,9 +107,8 @@ export class CmeshPeer {
         // TODO info
         console.log("--> Running test plan..")
         await cb(CmeshEvent.BeginTest)
-        const report = await this.runTest(pctx)
+        this.report = await this.runTest(pctx)
         await cb(CmeshEvent.EndTest)
-        console.log(report)
         pctx.stateTransition(PeerState.Reporting, PeerState.Shutdown)
         const update_wait = new Promise(resolve => setTimeout(resolve, REPORT_PROPAGATION_SEC * 1000))
         await cb(CmeshEvent.Exiting)
@@ -229,5 +243,4 @@ export class CmeshPeer {
         pctx.stateTransition(PeerState.Init, PeerState.Ready)
         await this.getExecutionPlan(pctx, coord_coll, true)
     }
-
 }
