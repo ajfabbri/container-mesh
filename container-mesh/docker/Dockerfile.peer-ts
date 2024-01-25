@@ -1,0 +1,23 @@
+FROM ubuntu:22.04
+
+# these are ignored for now
+ARG FLAVOR
+ARG ARCH
+ENV FLAVOR=${FLAVOR}
+ENV ARCH=${ARCH}
+
+RUN apt update && \
+    apt install -y --no-install-recommends iproute2 bash file findutils curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - &&\
+apt-get install -y nodejs
+WORKDIR /root/ts
+
+COPY ts/package*.json .
+RUN npm ci && npm cache clean --force
+
+COPY ./ts .
+COPY .secret.env .env ./docker/run-ts-peer.sh .
+
+ENTRYPOINT ["/bin/bash", "./run-ts-peer.sh"]

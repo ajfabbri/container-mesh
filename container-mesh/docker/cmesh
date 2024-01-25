@@ -19,9 +19,18 @@ SUBNET="10.1.0.0/16"
 GATEWAY="10.1.0.1"
 
 usage() {
-    echo "Usage: $0 build | stop | run <scale-factor> | clean | watch | ls | rm | cat | cp-coord | wait"
+    echo "Usage: $0 build [ts] | stop | run <scale-factor> [ts] | clean | watch | ls | rm | cat | cp-coord | wait"
     echo "  ARCH=$ARCH      FLAVOR=$FLAVOR"
     exit 1
+}
+
+peer_type_to_img() {
+    local peer_type=$1
+    if [[ $peer_type = "ts" ]]; then
+        echo "cmesh-peer-ts"
+    else
+        echo "cmesh-peer"
+    fi
 }
 
 build_coord() {
@@ -41,8 +50,17 @@ build_coord() {
 
 build_peer() {
     local build_args="$1"
-    # build and run peer container
-    eval 'docker build' "$build_args" '-t cmesh-peer -f docker/Dockerfile.peer .'
+    local peer_type="$2"
+    local img=$(peer_type_to_img $peer_type)
+
+    # build peer container
+    if [[ $peer_type = "ts" ]]; then
+        echo "--> Building typescript peer.."
+        eval 'docker build' "$build_args" "-t $img -f docker/Dockerfile.peer-ts ."
+    else
+        echo "--> Building rust peer.."
+        eval 'docker build' "$build_args" "-t $img -f docker/Dockerfile.peer ."
+    fi
 }
 
 run_coord() {
@@ -72,16 +90,18 @@ run_peer() {
     local i=$1
     local beginport=$2
     local endport=$3
-    local coord_addr=$4
-    local coord_port=$5
-    local rust_log=$6
+    local peer_type=$4
+    local coord_addr=$5
+    local coord_port=$6
+    local rust_log=$7
+    local img=$(peer_type_to_img $peer_type)
     set -x
     docker run -d --rm --name cmesh-peer-$i --label cmesh \
       --network=mesh --expose "$beginport-$endport" \
       -v peer-output:/output \
       --log-driver=journald  --log-opt labels=peer-$i \
       -e FLAVOR=$FLAVOR -e RUST_LOG=$rust_log \
-    cmesh-peer --coord-addr $coord_addr --coord-port $coord_port \
+      $img --coord-addr $coord_addr --coord-port $coord_port \
       --bind-port $beginport --output-dir=/output --device-name peer$i
     set +x
   }
@@ -89,18 +109,19 @@ run_peer() {
 
 run_peers() {
     local scale=$1
+    local peer_type=$2
     PARALLEL=1
     if [[ -n $PARALLEL ]]; then
-        export -f run_peer
+        export -f run_peer peer_type_to_img
         time parallel -j 8 'startport=$((5100 + ( {} * 10 ) )); endport=$((startport + 9)); ' \
-            'run_peer {} $startport $endport ' $COORD_ADDR $COORD_PORT $RUST_LOG ::: \
+            'run_peer {} $startport $endport ' $peer_type $COORD_ADDR $COORD_PORT $RUST_LOG ::: \
           $(seq 0 $((scale - 1)))
     else
         block_sz=10
         for (( i = 0; i<scale; i++ )); do
             beginport=$((5100 + ( i * block_sz) ))
             endport=$((beginport + block_sz - 1))
-            run_peer $i $beginport $endport $COORD_ADDR $COORD_PORT
+            run_peer $i $beginport $endport $peer_type $COORD_ADDR $COORD_PORT $RUST_LOG
         done
     fi
 }
@@ -122,13 +143,14 @@ coord_out_dir() {
 
 do_run() {
     local scale=$1
+    local peer_type=$2
     # create bridge network "mesh"
     docker network inspect mesh >/dev/null 2>&1 || \
     docker network create -d bridge \
       --ip-range $IP_RANGE --subnet $SUBNET --gateway $GATEWAY \
       mesh
     run_coord $scale
-    run_peers $scale
+    run_peers $scale $peer_type
     volpath=$(peer_out_dir)
     echo "*** Peer output will be in $volpath ***"
     volpath=$(coord_out_dir)
@@ -150,6 +172,7 @@ do_stop() {
 do_build() {
     local arch=$1
     local flavor=$2
+    local peer_type=$3
     # main
     build_args="--build-arg ARCH=$arch"
 
@@ -169,7 +192,7 @@ do_build() {
     echo "--> build coordinator"
     build_coord "$build_args"
     echo "--> build peer"
-    build_peer "$build_args"
+    build_peer "$build_args" $peer_type
 }
 
 do_clean() {
@@ -281,6 +304,7 @@ do_wait() {
 
 # parse cli args
 POSITIONAL_ARGS=()
+PEER_TYPE=rust
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -292,10 +316,18 @@ while [[ $# -gt 0 ]]; do
       fi
       SCALE=$2
       shift; shift
+    if [[ -n ${1+x} ]] && [[ $1 == "ts" ]]; then
+          PEER_TYPE=ts
+          shift
+      fi
       ;;
     build)
       MODE=build
-      shift # past value
+      shift
+      if [[ -n ${1+x} ]] && [[ $1 == "ts" ]]; then
+          PEER_TYPE=ts
+          shift
+      fi
       ;;
     stop)
       MODE=stop
@@ -346,11 +378,11 @@ set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
 if [ -z ${MODE+x} ] ; then usage; fi
 
 if [[ $MODE == "run" ]]; then
-    do_run $SCALE
+    do_run $SCALE $PEER_TYPE
 elif [[ $MODE == "stop" ]]; then
     do_stop
 elif [[ $MODE == "build" ]]; then
-    do_build $ARCH $FLAVOR
+    do_build $ARCH $FLAVOR $PEER_TYPE
 elif [[ $MODE == "clean" ]]; then
     do_clean
 elif [[ $MODE == "watch" ]]; then
