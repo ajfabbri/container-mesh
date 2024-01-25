@@ -1,3 +1,4 @@
+import { exit } from 'node:process';
 import { CmeshPeer, CmeshEvent } from './cmpeer';
 import { PeerArgs, parseCLIArgs } from './peerargs';
 
@@ -25,6 +26,7 @@ async function main() {
 
 main().then(() => {
     console.debug("Done")
+    exit(0)
 }).catch(e => {
     console.error(e);
 })
