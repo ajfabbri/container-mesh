@@ -4,4 +4,5 @@ Cargo.lock
 /perf-results
 /perf-profiling
 scripts/venv
-
+# When running cmesh peer locally, e.g. cmesh-peer --output-dir=outputX
+/output*
