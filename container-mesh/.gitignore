@@ -1,6 +1,7 @@
 .secret.env
 Cargo.lock
 /target*
+/bin
 /perf-results
 /perf-profiling
 scripts/venv

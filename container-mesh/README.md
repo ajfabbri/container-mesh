@@ -42,19 +42,29 @@ now, are left as an exercise for the reader. See section *Running in your
 environment* below for modifications you'll need to make to suit your
 environment.
 
-#### Building Debug
+#### Building Debug Flavor and Containers
 
 ```
 cargo build --target $DITTO_TARGET
 docker/cmesh build
 ```
 
-### Building Release ###
+### Building Release Flavor and Containers
 
 ```
 cargo build --target $DITTO_TARGET --release
 FLAVOR=release docker/cmesh build
 ```
+
+### Building for Distribution w/ Makefile
+
+The [Makefile](./Makefile) builds the rust apps as well as the typescript peer:
+
+```
+FLAVOR=release make
+```
+
+Omit the `FLAVOR=release` to build debug binaries.
 
 ### Running and Collecting Results
 
@@ -167,7 +177,7 @@ fs.inotify.max_user_instances = 512
 
 #### Config Files
 
-- .envrc    Environment variables needed for building (rust) agents.
+- .envrc    Environment variables needed for building peer and coordinator apps.
 - .env      Non-secret vars to be set in containers at runtime.
 - .secret.env   Secret vars needed by containers at runtime.
 
@@ -252,7 +262,6 @@ Start of with some simplifying assumptions:
     - A. Use ditto.. Write logs there and analyze at end.
     - B. Write to external tracing sink.
     - C. Write to log files and collect at end of run.
-  -> Try C then B?
 
 ## Work In Progress
 
@@ -269,9 +278,9 @@ Some TODOs:
           exec. plan)
 
     - [ ] calculate resync latency (bound on time to get full set of updates for
-        some epoch) 
+        some epoch)
 
-- [x] fix [cmesh-run.sh](docker/cmesh) to allow spinning up huge sets of peers
+- [x] fix [docker/cmesh](docker/cmesh) to allow spinning up huge sets of peers
 
 - [ ] Add the chaos stuff; write tests that use pumba / tc to mess with the network.
 
