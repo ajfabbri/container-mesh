@@ -12,12 +12,12 @@ ENV ARCH=${ARCH}
 RUN apt update && apt install iproute2 bash file findutils -y
 #RUN apk add --no-cache iproute2 bash dos2unix file
 
+# TODO don't assume root user
 WORKDIR /root
-# copy rust binaries from target/
-COPY ./target/${ARCH}/${FLAVOR:-release}/cmesh-coordinator ./${ARCH}/${FLAVOR:-release}/
-# cmesh script will place the .so here before we build
-COPY ./target/${ARCH}/${FLAVOR:-release}/libdittoffi.so ./${ARCH}/${FLAVOR:-release}/
-#COPY ./target/${ARCH}/${FLAVOR:-release}/**/libdittoffi.so ./${ARCH}/${FLAVOR:-release}/
+
+# These are created by the Makefile
+COPY ./bin/cmesh-coordinator ./${ARCH}/${FLAVOR:-release}/
+COPY ./bin/libdittoffi.so ./${ARCH}/${FLAVOR:-release}/
 COPY ./docker/run-coord.sh .env .secret.env .
 
 ENTRYPOINT ["bash", "./run-coord.sh"]

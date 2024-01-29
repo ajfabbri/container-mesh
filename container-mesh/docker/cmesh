@@ -178,13 +178,12 @@ do_build() {
 
     # put shared lib where docker build can find it
 
-    # assert that we can find libdittoffi.so
-    sopath=$(find target/$arch/$flavor -name libdittoffi.so | head -n 1)
-    if [[ -z $sopath ]]; then
-        echo "Error: could not find libdittoffi.so"
+    # assert that we can find libdittoffi.so, etc.
+    if [[ ! -f "bin/libdittoffi.so" ]]; then
+        echo "Error: libdittoffi.so not found in ./bin. Did you run make?"
         exit 1
     fi
-    cp $sopath target/$arch/$flavor/
+
 
     if [[ $flavor = "release" ]]; then
         build_args+=" --build-arg FLAVOR=release"

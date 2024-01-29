@@ -6,6 +6,7 @@ high-mobility environments, using the [Ditto](https://ditto.live) Rust SDK.
 Test-driven development for challenging edge sync use cases. Peer-to-peer only.
 
 ## The Idea
+
 Run a bunch of containers with an app based on Ditto's small peer SDK. The app
 measures update latency and other system metrics.  Using containers makes it
 easy to scale to large node counts on a single machine, and to introduce chaos
@@ -19,6 +20,7 @@ high mobility, and other failure conditions.
 
 &nbsp;&nbsp;&nbsp;`cmesh` main driver script. Run without arguments for usage.
 
+*Rust Apps*
 
 `peer/`
 
@@ -35,6 +37,11 @@ We run 1 of these for each test.
 
 Common Rust definitions and logic used by `peer` and `coordinator`.
 
+*Typescript App*
+There is also a Typescript implementation of the cmesh-peer which uses the Ditto JS SDK.
+
+`ts/`
+
 ### Building
 
 Tested with `DITTO_TARGET=x86_64-unknown-linux-gnu`. Other architectures, for
@@ -42,29 +49,35 @@ now, are left as an exercise for the reader. See section *Running in your
 environment* below for modifications you'll need to make to suit your
 environment.
 
-#### Building Debug Flavor and Containers
-
-```
-cargo build --target $DITTO_TARGET
-docker/cmesh build
-```
-
-### Building Release Flavor and Containers
-
-```
-cargo build --target $DITTO_TARGET --release
-FLAVOR=release docker/cmesh build
-```
-
 ### Building for Distribution w/ Makefile
 
-The [Makefile](./Makefile) builds the rust apps as well as the typescript peer:
+The [Makefile](./Makefile) builds the rust apps as well as the typescript peer,
+and places them in the `./bin/` folder, e.g.:
 
 ```
 FLAVOR=release make
 ```
 
 Omit the `FLAVOR=release` to build debug binaries.
+
+#### Building Rust Apps and Containers
+
+For manual testing, you can build Rust apps separately. Keep in mind that the
+test runner scripts will expect to see the executables in a `./bin` directory,
+so you still need to run `make` before using them.
+
+For *debug builds*:
+
+```
+cargo build --target $DITTO_TARGET
+docker/cmesh build
+```
+
+For *release builds*:
+```
+cargo build --target $DITTO_TARGET --release
+FLAVOR=release docker/cmesh build
+```
 
 ### Running and Collecting Results
 
