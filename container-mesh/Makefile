@@ -14,11 +14,18 @@ all: build
 # Build rust coordinator and peer
 rust:
 	{ \
+    set -e ;\
 	echo "FLAVOR: $(FLAVOR)" ;\
 	$(CARGO) build --target $(ARCH) $(FLAVOR_FLAG) ;\
 	mkdir -p $(BIN_DIR); \
 	cp target/$(ARCH)/$(FLAVOR)/cmesh-peer $(BIN_DIR) ;\
 	cp target/$(ARCH)/$(FLAVOR)/cmesh-coordinator $(BIN_DIR) ;\
+    sopath=$$(find target/$(ARCH)/$(FLAVOR) -name libdittoffi.so | head -n 1) ;\
+    if [[ -z $$sopath ]]; then \
+        echo "Error: could not find libdittoffi.so" ;\
+        false ;\
+    fi ;\
+    cp $$sopath $(BIN_DIR) ;\
 	}
 
 rust-clean:
