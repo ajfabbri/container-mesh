@@ -42,7 +42,7 @@ There is also a Typescript implementation of the cmesh-peer which uses the Ditto
 
 `ts/`
 
-### Building
+## Building
 
 Tested with `DITTO_TARGET=x86_64-unknown-linux-gnu`. Other architectures, for
 now, are left as an exercise for the reader. See section *Running in your
@@ -79,7 +79,7 @@ cargo build --target $DITTO_TARGET --release
 FLAVOR=release docker/cmesh build
 ```
 
-### Running and Collecting Results
+## Running and Collecting Results
 
 Run 20 peers:
 
@@ -105,7 +105,7 @@ docker/cmesh cat    # output all test results to stdout
 docker/cmesh rm     # delete all test reports
 ```
 
-#### Automated Iteration and Graph Plotting
+### Automated Iteration and Graph Plotting
 
 There is a helper script that will run multiple iterations of the test and
 collect output, which should allow you to do long-running tests, `test-loop.sh`.
@@ -234,6 +234,19 @@ test execution control provided by the coordinator.
 The typescript implementation is written as a library you can include to create
 your own test application. An example of a simple app which participates in a
 cmesh test as a client is in [ts/src/index.ts](./ts/src/index.ts)
+
+# Releases
+
+Release typescript library:
+- Choose next version number, e.g. 0.1.2.
+- Update [ts/package.json](./ts/package.json)
+- Create and push git tag: `git tag v0.1.2 && git push origin v0.1.2`
+
+Note: append `-rc1`, etc to git tag names for release candidate builds.
+
+Release Rust apps:
+
+TODO
 
 # Design & Notes (WIP)
 
