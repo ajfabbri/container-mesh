@@ -1,12 +1,12 @@
 SHELL := /bin/bash
-BIN_DIR = bin/
+BIN_DIR = bin
 
 CARGO = cargo
 FLAVOR ?= debug
 ARCH = x86_64-unknown-linux-gnu
 
 # If FLAVOR is release, set FLAVOR_FLAG to "--release", else make it empty
-FLAVOR_FLAG = $(ifeq ($(release,$(FLAVOR)),--release,)
+FLAVOR_FLAG = $(if $(findstring release,$(FLAVOR)),--release,)
 
 GIT_VERSION := "$(shell git describe --abbrev=4 --dirty --always --tags)"
 
@@ -41,13 +41,13 @@ typescript:
 	npm run package ;\
 	popd ;\
 	mkdir -p $(BIN_DIR) ;\
-	mv ts/dist/cmesh_peer-*.tgz $(BIN_DIR) ;\
+	mv $(shell echo ts/dist/cmesh_peer-*.tgz) $(BIN_DIR) ;\
 	}
 
 typescript-clean:
 	{ \
 	cd ts ;\
-	rm -rf node_modules/* dist/* cmesh-peer-*.tgz ;\
+	rm -rf $(shell echo $(BIN_DIR)/cmesh_peer-*.tgz dist/* node_modules/*) ;\
 	}
 
 # build typescript and rust
