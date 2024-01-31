@@ -8,6 +8,8 @@ ARCH = x86_64-unknown-linux-gnu
 # If FLAVOR is release, set FLAVOR_FLAG to "--release", else make it empty
 FLAVOR_FLAG = $(ifeq ($(release,$(FLAVOR)),--release,)
 
+GIT_VERSION := "$(shell git describe --abbrev=4 --dirty --always --tags)"
+
 # Define the default target
 all: build
 
@@ -33,13 +35,13 @@ rust-clean:
 
 typescript:
 	{ \
+    echo "GIT_VERSION: $(GIT_VERSION)" ;\
 	pushd ts ;\
 	npm ci ;\
-	npm run build ;\
-	npm pack ;\
-	mkdir -p $(BIN_DIR) ;\
+	npm run package ;\
 	popd ;\
-	cp ts/cmesh_peer-*.tgz $(BIN_DIR) ;\
+	mkdir -p $(BIN_DIR) ;\
+	mv ts/dist/cmesh_peer-*.tgz $(BIN_DIR) ;\
 	}
 
 typescript-clean:

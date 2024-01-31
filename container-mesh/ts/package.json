@@ -6,13 +6,16 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
+    "prepackage": "npm run clean && npm run build && node dist/package_setup.js",
+    "package": "cd dist && npm pack",
+    "clean": "rm -rf dist",
     "start": "tsc && node dist/index.js",
     "lint": "eslint . --ext .ts",
     "lint-fix": "eslint . --ext .ts --fix",
     "test": "jest"
   },
   "files": [
-    "/dist"
+    "dist/*"
   ],
   "type": "module",
   "repository": {
