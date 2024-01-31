@@ -8,6 +8,8 @@ export interface PeerArgs extends Record<string, string | number | undefined> {
     bind_addr: string
     bind_port: number
     output_dir: string
+    ditto_license: string | undefined
+    ditto_app_id: string | undefined
 }
 
 export const defaultPeerArgs: PeerArgs = {
@@ -16,7 +18,10 @@ export const defaultPeerArgs: PeerArgs = {
     device_name: "tspeer",
     bind_addr: "0.0.0.0",
     bind_port: 4010,
-    output_dir: "output"
+    output_dir: "output",
+    // Additional args without command-line equivalents
+    ditto_license: undefined,
+    ditto_app_id: undefined
 }
 
 export function parseCLIArgs(): PeerArgs {

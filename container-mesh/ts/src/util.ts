@@ -7,14 +7,16 @@ export function random_peer_id(peer_name: string): string {
     return `${peer_name}_${Math.random().toString(16).substr(2, 8)}`
 }
 
-export function make_ditto(): Ditto {
+export function make_ditto(appId?: string): Ditto {
     // get identity from DITTO_APP_ID env var
-    const app_id = process.env.DITTO_APP_ID
-    if (!app_id) {
+    if (appId === undefined) {
+        appId = process.env.DITTO_APP_ID
+    }
+    if (appId === undefined) {
         throw new Error("DITTO_APP_ID env var not set")
     }
     const identity: IdentityOfflinePlayground = {
-        appID: app_id,
+        appID: appId,
         type: "offlinePlayground"
     }
     // TODO make configurable

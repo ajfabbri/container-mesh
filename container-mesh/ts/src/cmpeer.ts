@@ -99,7 +99,7 @@ export class CmeshPeer {
             console.log(`Creating output directory ${this.pargs.output_dir}`)
             mkdirSync(this.pargs.output_dir);
         }
-        const ditto = make_ditto()
+        const ditto = make_ditto(this.pargs.ditto_app_id)
         const pctx = new PeerContext(random_peer_id(this.pargs.device_name), ditto, this.pargs.coord_addr,
                                    this.pargs.coord_port, this.pargs.bind_addr, this.pargs.bind_port)
 
@@ -133,17 +133,24 @@ export class CmeshPeer {
         config.listen.tcp.isEnabled = true
         config.listen.tcp.interfaceIP = pctx.local_addr
         config.listen.tcp.port = pctx.local_port
-        console.log(`--> set transport config listen ${config.listen.tcp.interfaceIP}:${config.listen.tcp.port}, coord ${coord_tcp}`)
+        console.log(`--> set transport config listen ${config.listen.tcp.interfaceIP}:`
+                   + `${config.listen.tcp.port}, coord ${coord_tcp}`)
         pctx.ditto!.setTransportConfig(config)
         pctx.transport_config = config
     }
 
     async initLicense(pctx: PeerContext) {
-        const lkey = process.env.DITTO_LICENSE
-        if (!lkey) {
-            throw new Error("DITTO_LICENSE environment variable not set")
+        let lkey
+        if (this.pargs.ditto_license) {
+            lkey = this.pargs.ditto_license
+        } else {
+            const lkey = process.env.DITTO_LICENSE
+            if (!lkey) {
+                throw new Error("Must set ditto_license in config, or "
+                                + "DITTO_LICENSE in env.")
+            }
         }
-        pctx.ditto?.setOfflineOnlyLicenseToken(lkey)
+        pctx.ditto?.setOfflineOnlyLicenseToken(lkey!)
     }
 
     // Resolves when coord info has been fetched and set in pctx
