@@ -1,6 +1,6 @@
 import { exit } from 'node:process';
-import { CmeshPeer, CmeshEvent } from './cmpeer';
-import { PeerArgs, parseCLIArgs } from './peerargs';
+import { CmeshPeer, CmeshEvent } from './cmpeer.js';
+import { PeerArgs, parseCLIArgs } from './peerargs.js';
 
 // main function
 async function main() {

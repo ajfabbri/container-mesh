@@ -1,8 +1,8 @@
 import { Collection, DocumentPath, LiveQuery, Subscription, DocumentID } from '@dittolive/ditto'
-import { PeerContext } from './context'
-import { LatencyStats, PeerId, PeerDoc, PeerLogs, PeerLog, PeerRecord } from './types'
-import { system_time_msec } from './util'
-import { PEER_LOG_SIZE } from './default'
+import { PeerContext } from './context.js'
+import { LatencyStats, PeerId, PeerDoc, PeerLogs, PeerLog, PeerRecord } from './types.js'
+import { system_time_msec } from './util.js'
+import { PEER_LOG_SIZE } from './default.js'
 
 interface TimestampIndex {
     ts: number

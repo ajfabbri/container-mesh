@@ -1,6 +1,6 @@
 import { Ditto, DocumentID, TransportConfig } from "@dittolive/ditto"
-import { CoordinatorInfo, PeerId, PeerState, SerializedPeer } from "./types"
-import { COORD_COLLECTION_NAME } from "./default"
+import { CoordinatorInfo, PeerId, PeerState, SerializedPeer } from "./types.js"
+import { COORD_COLLECTION_NAME } from "./default.js"
 
 export class PeerContext {
     id: PeerId

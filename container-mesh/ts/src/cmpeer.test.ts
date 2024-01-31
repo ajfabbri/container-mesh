@@ -1,5 +1,5 @@
-import { CmeshPeer, CmeshEvent } from './cmpeer'
-import { PeerArgs, defaultPeerArgs } from './peerargs'
+import { CmeshPeer, CmeshEvent } from './cmpeer.js'
+import { PeerArgs, defaultPeerArgs } from './peerargs.js'
 
 test('cmditto app lifecycle', async () => {
     let begin = false

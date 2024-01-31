@@ -1,12 +1,12 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { Collection, DocumentID, PendingCursorOperation, Subscription, TransportConfig } from '@dittolive/ditto'
-import { make_ditto, random_peer_id, system_time_msec} from './util'
-import { CoordinatorInfo, Heartbeat, Peer, PeerReport, PeerState } from './types'
-import { QUERY_POLL_SEC, REPORT_PROPAGATION_SEC } from './default'
-import { PeerContext } from './context'
-import { Consumer } from './consumer'
-import { Producer } from './producer'
-import { PeerArgs } from './peerargs'
+import { make_ditto, random_peer_id, system_time_msec} from './util.js'
+import { CoordinatorInfo, Heartbeat, Peer, PeerReport, PeerState } from './types.js'
+import { QUERY_POLL_SEC, REPORT_PROPAGATION_SEC } from './default.js'
+import { PeerContext } from './context.js'
+import { Consumer } from './consumer.js'
+import { Producer } from './producer.js'
+import { PeerArgs } from './peerargs.js'
 
 // State transitions exposed to the app using this library
 export enum CmeshEvent {
@@ -29,7 +29,7 @@ export class CmeshPeer {
         const peersToConnect = plan.connections[pctx.id]
         console.debug('--> initiating connections to', peersToConnect)
         for (const pid of peersToConnect) {
-            const peerObj: Peer | undefined = plan.peers.find((p) => p.peer_id == pid)
+            const peerObj: Peer | undefined = plan.peers.find((p: Peer) => p.peer_id == pid)
             if (peerObj === undefined) {
                 console.error(`--> Peer ${pid} not found in execution plan's peer list`)
                 continue

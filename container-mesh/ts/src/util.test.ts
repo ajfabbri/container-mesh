@@ -1,4 +1,4 @@
-import {random_peer_id} from './util'
+import {random_peer_id} from './util.js'
 
 test('random_peer_id', () => {
     const id = random_peer_id("tspeer")

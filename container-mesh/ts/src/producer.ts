@@ -1,7 +1,7 @@
 import { Collection, MutableDocument } from '@dittolive/ditto'
-import { PeerContext } from './context'
-import { ExecutionPlan, PeerId, PeerRecord } from './types'
-import { PEER_LOG_SIZE } from './default'
+import { PeerContext } from './context.js'
+import { ExecutionPlan, PeerId, PeerRecord } from './types.js'
+import { PEER_LOG_SIZE } from './default.js'
 
 export class Producer {
     peerId: PeerId
