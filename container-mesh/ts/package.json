@@ -47,6 +47,6 @@
     "node": ">=18.3.0"
   },
   "dependencies": {
-    "@dittolive/ditto": ">=4.5.2"
+    "@dittolive/ditto": "4.5.2"
   }
 }
