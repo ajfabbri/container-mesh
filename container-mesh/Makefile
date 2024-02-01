@@ -39,6 +39,7 @@ typescript:
 	pushd ts ;\
 	npm ci ;\
 	npm run package ;\
+	rm dist/package.json ;\
 	popd ;\
 	mkdir -p $(BIN_DIR) ;\
 	mv $(shell echo ts/dist/cmesh_peer-*.tgz) $(BIN_DIR) ;\
