@@ -1,9 +1,6 @@
-use std::path::PathBuf;
-use std::env::var;
-use std::process::Command;
 
 fn main() {
-    // TODO move ditto dependency stuff to ../common
+    /*
     let lib_dir = var("DITTOFFI_SEARCH_PATH")
         .expect("Set env var DITTOFFI_SEARCH_PATH");
     let out_dir = var("OUT_DIR").unwrap();
@@ -14,6 +11,7 @@ fn main() {
             .arg(out_dir.clone())
             .status()
             .expect(format!("failed to copy {} to {}", lib_path.display(), out_dir).as_str());
+    */
 
     // Experimenting with static linking...
     //println!("cargo:rustc-link-search=/lib/gcc/x86_64-linux-gnu/11");

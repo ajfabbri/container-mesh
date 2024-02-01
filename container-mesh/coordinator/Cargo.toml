@@ -6,9 +6,8 @@ edition = "2021"
 [dependencies]
 common = { path = "../common" }
 clap = { version = "=4.2.0", features = ["derive"] }
-dittolive-ditto.path = "../../../ditto/rust/dittolive-ditto"
-#dittolive-ditto = { version = "4.4.2" }
 chrono = "0.4.31"
+dittolive-ditto = { version = "4.5.2" }
 env_logger = "0.10.1"
 log = "0.4.20"
 

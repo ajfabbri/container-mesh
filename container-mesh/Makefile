@@ -24,10 +24,10 @@ rust:
 	cp target/$(ARCH)/$(FLAVOR)/cmesh-coordinator $(BIN_DIR) ;\
     sopath=$$(find target/$(ARCH)/$(FLAVOR) -name libdittoffi.so | head -n 1) ;\
     if [[ -z $$sopath ]]; then \
-        echo "Error: could not find libdittoffi.so" ;\
-        false ;\
+        echo "Warning: could not find libdittoffi.so, need to figure out packaging" ;\
+    else \
+        cp $$sopath $(BIN_DIR) ;\
     fi ;\
-    cp $$sopath $(BIN_DIR) ;\
 	}
 
 rust-clean:
